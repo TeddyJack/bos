@@ -1,39 +1,46 @@
 `include "defines.v"
 
 module cmd_decoder(
+input       nrst,
 input       clk,
 input [7:0] rx_data,
 input       rx_valid,
 output      rx_ready,
 
-input  [4:0]     ready_bus,
-output [5*8-1:0] data_bus,
-output [4:0]     valid_bus,
+output [7:0]  q,
+output [4:0]  valid_bus,
 
 // debug
-output [2:0] my_state,
-output [7:0] my_dest,
-output [7:0] my_len,
-output [7:0] my_cnt
+output [2:0]  my_state,
+output [7:0]  my_dest,
+output [7:0]  my_len,
+output [7:0]  my_cnt,
+output [7:0]  my_crc_calcked,
+output        my_rdreq,
+output        my_empty,
+output        my_rst_timeout,
+output [31:0] my_cnt_timeout
 );
 assign my_state = state;
 assign my_dest = dest;
 assign my_len = len;
 assign my_cnt = cnt;
-wire rst = 1;
+assign my_crc_calcked = crc_calcked;
+assign my_rdreq = rdreq;
+assign my_empty = empty;
+assign my_rst_timeout = rst_timeout;
+assign my_cnt_timeout = cnt_timeout;
 
 
 assign rx_ready = 1;
 
-assign valid_bus = (rx_valid & (state == READ_DATA)) << dest; // WRONG
-assign data_bus = q << dest*8;
+assign valid_bus = valid << dest;
 
 
 reg [7:0] dest;
 reg [7:0] len;
 reg [7:0] cnt;
 reg [7:0] crc_calcked;
-reg       crc_ok;
 reg       clear;
 
 reg [2:0] state;
@@ -45,20 +52,24 @@ localparam READ_DATA    = 4;
 localparam READ_CRC     = 5;
 localparam FORWARD_DATA = 6;
 
-always@(posedge clk or negedge rst or posedge rst_timeout)
+always@(posedge clk or negedge nrst or posedge rst_timeout)
   begin
-  if(!rst | rst_timeout)
+  if(!nrst | rst_timeout)
     begin
     state <= READ_PREFIX;
     dest <= 0;
     len <= 0;
     cnt <= 0;
-    crc_ok <= 0;
     crc_calcked <= 0;
     end
   else
     begin
-    if(rx_valid)
+    if(state == FORWARD_DATA)
+      begin
+      if(empty)
+        state <= READ_PREFIX;
+      end
+    else if(rx_valid)
       case(state)
         READ_PREFIX:
           begin
@@ -83,11 +94,9 @@ always@(posedge clk or negedge rst or posedge rst_timeout)
           end
         READ_DATA:
           begin
+          crc_calcked <= crc_calcked + rx_data;
           if(cnt < (len - 1'b1))
-            begin
-            crc_calcked <= crc_calcked + rx_data;
             cnt <= cnt + 1'b1;
-            end
           else
             begin
             cnt <= 0;
@@ -99,7 +108,6 @@ always@(posedge clk or negedge rst or posedge rst_timeout)
           crc_calcked <= 0;
           if(crc_calcked == rx_data)
             begin
-            crc_ok <= 1;
             state <= FORWARD_DATA;
             end
           else
@@ -108,32 +116,27 @@ always@(posedge clk or negedge rst or posedge rst_timeout)
             clear <= 1;
             end
           end
-        FORWARD_DATA:
-          begin
-          if(empty)
-            state <= READ_PREFIX;
-          end
+        default:
+          state <= READ_PREFIX;   // maybe add some actions here
       endcase
     end
   end
 
   
-localparam [31:0] CNT_LIMIT = 48000000 * `TIMEOUT_MSG / 1000 - 1;   // ignore message about constant overflow
+localparam [31:0] CNT_LIMIT = 50000000 * `TIMEOUT_MSG / 1000 - 1;   // ignore message about constant overflow
   
 reg [31:0] cnt_timeout;
   
-always@(posedge clk or negedge rst)
+always@(posedge clk or negedge nrst)
   begin
-  if(!rst)
-    begin
-    end
+  if(!nrst)
+    cnt_timeout <= 0;
   else
     begin
-    if(rx_valid | (state == READ_PREFIX) | (cnt_timeout == CNT_LIMIT))
+    if(rx_valid | (state == READ_PREFIX) | rst_timeout)
       cnt_timeout <= 0;
     else
       cnt_timeout <= cnt_timeout + 1'b1;
-      
     end
   end
   
@@ -143,15 +146,25 @@ fifo_dc fifo_dc
 (
   .clock(clk),
   .data (rx_data),
-  .rdreq(),
-  .sclr (clear),
-  .wrreq(rx_valid),
+  .rdreq(rdreq),
+  .aclr (!nrst),
+  .sclr (clear | rst_timeout),
+  .wrreq(rx_valid & (state == READ_DATA)),
   .empty(empty),
   .full (),
   .q    (q)
 );
 wire empty;
-wire [7:0] q;
+wire rdreq = !empty & (state == FORWARD_DATA);
+
+reg valid;
+always@(posedge clk or negedge nrst)
+  begin
+  if(!nrst)
+    valid <= 0;
+  else
+    valid <= rdreq;
+  end
 
 
 endmodule
