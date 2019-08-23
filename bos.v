@@ -1,3 +1,5 @@
+`include "defines.v"
+
 module bos(
 // main
 //input         fpga_clk_100,
@@ -14,10 +16,10 @@ input         fpga_clk_48,
 //output        sdram_ras_n,  // row address strobe command
 //output        sdram_cs_n,   // chip select
 //// ADCs (v-meter, a-meter)
-//output        adc_sclk,     // D12, D13, D14
-//output        adc_din,      //      D13, D14
-//input         adc_dout,     //      D13, D14
-//output        adc1_cs_n,    //      D13
+output        adc_sclk,     // D12, D13, D14
+output        adc_din,      //      D13, D14
+input         adc_dout,     //      D13, D14
+output        adc1_cs_n,    //      D13
 //output        adc2_cs_n,    //           D14
 //output        adc_din_pwr,  // D12
 //input         adc_dout_pwr, // D12
@@ -89,46 +91,95 @@ input         rx,
 //input         slv_fpga,     // serial IF видеоданных - вход управления      
 //input         sckv_fpga,    // serial IF видеоданных - вход тактов
 //output        sdatav_fpga   // serial IF видеоданных - выход данных
-output [7:0] my_rx_data,
-output       my_rx_valid,
-output       my_tx_ready,
-output [7:0] my_tx_data,
-output       my_tx_valid,
-output       my_rx_ready,
-output       gnd,
+// debug
+input                               n_rst,
+output [2:0]                        my_state,
+output [($clog2(`NUM_SOURCES)-1):0] my_current_source,
+output [7:0]                        my_cnt,
+output [7:0]                        my_rx_data,
+output                              my_rx_valid,
+output [7:0]                        my_tx_data,
+output                              my_tx_valid,
+output                              my_tx_ready,
+output [1*`NUM_SOURCES-1:0]         my_rdreq_bus,
+output [7:0]                        my_crc,
+output [1*`NUM_SOURCES-1:0]         my_have_msg_bus,
+output [8*`NUM_SOURCES-1:0]         my_len_bus
 
-output [4:0]     ready_bus,
-output [5*8-1:0] data_bus,
-output [4:0]     valid_bus,
-output [2:0]      my_state,
-output [7:0]      my_dest,
-output [7:0]      my_len,
-output [7:0]      my_cnt
 
 
 );
-assign gnd = 0;
-
-assign my_rx_data  = rx_data;
+assign my_rx_data = rx_data;
 assign my_rx_valid = rx_valid;
-assign my_tx_ready = tx_ready;
-assign my_tx_data  = tx_data;
+assign my_tx_data = tx_data;
 assign my_tx_valid = tx_valid;
-assign my_rx_ready = rx_ready;
+assign my_tx_ready = tx_ready;
+assign my_rdreq_bus = rdreq_bus;
+assign my_have_msg_bus = have_msg_bus;
+assign my_len_bus = len_bus;
+
+       
+if_spi if_spi_0
+(
+  .n_rst    (n_rst),
+  .clk      (fpga_clk_48),
+  .cs       (adc1_cs_n),
+  .sclk     (adc_sclk),
+  .mosi     (adc_din),
+  .miso     (adc_dout),
+  .in_data  (host_data_bus[8*0+:8]),
+  .in_ena   (valid_bus[0]),
+  .rd_req   (rdreq_bus[0]),
+  .out_data (guest_data_bus[8*0+:8]),
+  .have_msg (have_msg_bus[0]),
+  .len      (len_bus[8*0+:8])
+);
 
 
-wire [7:0]  rx_data;
-wire        rx_valid;
-wire        tx_ready;
-wire [7:0]  tx_data;
-wire        tx_valid;
-wire        rx_ready;
+cmd_decoder cmd_decoder
+(
+  .n_rst    (n_rst),
+  .clk      (fpga_clk_48),
+  .rx_data  (rx_data),
+  .rx_valid (rx_valid),
+  .rx_ready (rx_ready),
+  .q        (host_data_bus),
+  .valid_bus(valid_bus)
+);
+wire [8*`NUM_SOURCES-1:0] host_data_bus;
+wire [1*`NUM_SOURCES-1:0] valid_bus;
 
-localparam PRESCALE = 50000000 / (115200 * 8);	// = fclk / (baud * 8)
 
-uart uart (
+cmd_encoder cmd_encoder
+(
+  .n_rst        (n_rst),
+  .clk          (fpga_clk_48),
+  .have_msg_bus (have_msg_bus),
+  .data_bus     (guest_data_bus),
+  .len_bus      (len_bus),
+  .rdreq_bus    (rdreq_bus),
+  .tx_data      (tx_data),
+  .tx_valid     (tx_valid),
+  .tx_ready     (tx_ready),
+  // debug
+  .my_state         (my_state),
+  .my_current_source(my_current_source),
+  .my_cnt           (my_cnt),
+  .my_crc           (my_crc)
+  
+  
+  
+);
+wire [1*`NUM_SOURCES-1:0] have_msg_bus;
+wire [8*`NUM_SOURCES-1:0] guest_data_bus;
+wire [8*`NUM_SOURCES-1:0] len_bus;
+wire [1*`NUM_SOURCES-1:0] rdreq_bus;
+
+
+uart uart
+(
   .clk                (fpga_clk_48),
-  .rst                (0),
+  .rst                (!n_rst),
   // AXI input
   .input_axis_tdata   (tx_data),    // I make it
   .input_axis_tvalid  (tx_valid),   // I make it
@@ -143,29 +194,13 @@ uart uart (
   // Configuration
   .prescale           (PRESCALE)
 );
-
-
-cmd_decoder cmd_decoder (
-  .clk      (fpga_clk_48),
-  .rx_data  (rx_data),
-  .rx_valid (rx_valid),
-  .rx_ready (rx_ready),
-  .ready_bus (ready_bus),
-  .data_bus  (data_bus),
-  .valid_bus (valid_bus),
-  // debug
-  .my_state  (my_state),
-  .my_dest   (my_dest),
-  .my_len    (my_len),
-  .my_cnt    (my_cnt)
-);
-
-
-cmd_encoder cmd_encoder (
-  .tx_data  (tx_data),
-  .tx_valid (tx_valid),
-  .tx_ready (tx_ready)
-);
+localparam PRESCALE = 50000000 / (115200 * 8);	// = fclk / (baud * 8)
+wire [7:0]  rx_data;
+wire        rx_valid;
+wire        tx_ready;
+wire [7:0]  tx_data;
+wire        tx_valid;
+wire        rx_ready;
 
 
 endmodule

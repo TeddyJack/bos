@@ -46,13 +46,13 @@ task automatic send_to_rx;
   input [7:0] value;
   integer i;
   begin: t1
-    rx = 0; #8681;
+    rx = 0; #7000;
     for(i=0; i<=7; i=i+1)
     begin: f1
-      rx = value[i]; #8681;
+      rx = value[i]; #7000;
     end
-    rx = 1; #8681;
-    #(8681*3);
+    rx = 1; #7000;
+    #(7000*3);
   end
 endtask
 

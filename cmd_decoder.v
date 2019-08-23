@@ -1,38 +1,39 @@
 `include "defines.v"
 
 module cmd_decoder(
-input       nrst,
-input       clk,
-input [7:0] rx_data,
-input       rx_valid,
-output      rx_ready,
+input         n_rst,
+input         clk,
+
+input [7:0]   rx_data,
+input         rx_valid,
+output        rx_ready,
 
 output [7:0]  q,
-output [4:0]  valid_bus,
+output [`NUM_SOURCES-1:0]  valid_bus
 
 // debug
-output [2:0]  my_state,
-output [7:0]  my_dest,
-output [7:0]  my_len,
-output [7:0]  my_cnt,
-output [7:0]  my_crc_calcked,
-output        my_rdreq,
-output        my_empty,
-output        my_rst_timeout,
-output [31:0] my_cnt_timeout
+//output [2:0]  my_state,
+//output [7:0]  my_dest,
+//output [7:0]  my_len,
+//output [7:0]  my_cnt,
+//output [7:0]  my_crc_calcked,
+//output        my_rdreq,
+//output        my_empty,
+//output        my_rst_timeout,
+//output [31:0] my_cnt_timeout
 );
-assign my_state = state;
-assign my_dest = dest;
-assign my_len = len;
-assign my_cnt = cnt;
-assign my_crc_calcked = crc_calcked;
-assign my_rdreq = rdreq;
-assign my_empty = empty;
-assign my_rst_timeout = rst_timeout;
-assign my_cnt_timeout = cnt_timeout;
+//assign my_state = state;
+//assign my_dest = dest;
+//assign my_len = len;
+//assign my_cnt = cnt;
+//assign my_crc_calcked = crc_calcked;
+//assign my_rdreq = rdreq;
+//assign my_empty = empty;
+//assign my_rst_timeout = rst_timeout;
+//assign my_cnt_timeout = cnt_timeout;
 
 
-assign rx_ready = 1;
+assign rx_ready = 1;  // TODO
 
 assign valid_bus = valid << dest;
 
@@ -52,9 +53,9 @@ localparam READ_DATA    = 4;
 localparam READ_CRC     = 5;
 localparam FORWARD_DATA = 6;
 
-always@(posedge clk or negedge nrst or posedge rst_timeout)
+always@(posedge clk or negedge n_rst or posedge rst_timeout)
   begin
-  if(!nrst | rst_timeout)
+  if(!n_rst | rst_timeout)
     begin
     state <= READ_PREFIX;
     dest <= 0;
@@ -127,9 +128,9 @@ localparam [31:0] CNT_LIMIT = 50000000 * `TIMEOUT_MSG / 1000 - 1;   // ignore me
   
 reg [31:0] cnt_timeout;
   
-always@(posedge clk or negedge nrst)
+always@(posedge clk or negedge n_rst)
   begin
-  if(!nrst)
+  if(!n_rst)
     cnt_timeout <= 0;
   else
     begin
@@ -147,7 +148,7 @@ fifo_dc fifo_dc
   .clock(clk),
   .data (rx_data),
   .rdreq(rdreq),
-  .aclr (!nrst),
+  .aclr (!n_rst),
   .sclr (clear | rst_timeout),
   .wrreq(rx_valid & (state == READ_DATA)),
   .empty(empty),
@@ -158,9 +159,9 @@ wire empty;
 wire rdreq = !empty & (state == FORWARD_DATA);
 
 reg valid;
-always@(posedge clk or negedge nrst)
+always@(posedge clk or negedge n_rst)
   begin
-  if(!nrst)
+  if(!n_rst)
     valid <= 0;
   else
     valid <= rdreq;
