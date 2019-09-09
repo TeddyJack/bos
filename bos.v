@@ -86,10 +86,10 @@ output reg        functional,           // off/on level translators
 //output        shd_fpga,     // вход тактов уровня данных
 //output        clpob_fpga,   // вход импульса привязки на выходе
 //
-//output        sl_fpga,      // SPI control - cs
-//output        sdatai_fpga,  // SPI control - mosi
-//input         sdatao_fpga,  // SPI control - miso
-//output        sck_fpga,     // SPI control - sclk
+output        sl_fpga,      // SPI control - cs
+output        sdatai_fpga,  // SPI control - mosi
+input         sdatao_fpga,  // SPI control - miso
+output        sck_fpga,     // SPI control - sclk
 //
 //output        slv_fpga,     // SPI video - cs      
 //output        sckv_fpga,    // SPI video - sclk    // 48 MHz
@@ -121,7 +121,7 @@ assign my_len_bus = len_bus;
 
        
        
-if_spi potentiometer_1
+if_spi #(.D_WIDTH(16)) potentiometer_1
 (
   .n_rst    (n_rst),
   .clk      (fpga_clk_48),
@@ -159,7 +159,7 @@ assign rst_power_n = 1'b1;
 
 
 
-if_spi adc_1
+if_spi #(.D_WIDTH(16)) adc_1
 (
   .n_rst    (n_rst),
   .clk      (fpga_clk_48),
@@ -191,6 +191,24 @@ if_spi_multi #(.N_SLAVES(2)) adcs
   .len     (len_bus[8*5+:8*2]),
   .have_msg(have_msg_bus[6:5]),
   .s_rdreq (rdreq_bus[6:5])
+);
+
+
+
+if_spi #(.D_WIDTH(24)) spi_bos
+(
+  .n_rst    (n_rst),
+  .clk      (fpga_clk_48),
+  .cs       (sl_fpga),
+  .sclk     (sck_fpga),
+  .mosi     (sdatai_fpga),
+  .miso     (sdatao_fpga),
+  .in_data  (master_data),
+  .in_ena   (valid_bus[8]),
+  .rd_req   (rdreq_bus[8]),
+  .out_data (slave_data_bus[8*8+:8]),
+  .have_msg (have_msg_bus[8]),
+  .len      (len_bus[8*8+:8])
 );
 
 
