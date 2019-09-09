@@ -1,23 +1,23 @@
 `include "defines.v"
 
 module cmd_encoder(
-input                       n_rst,
-input                       clk,
+input                 n_rst,
+input                 clk,
 
-input  [1*`NUM_SOURCES-1:0] have_msg_bus,
-input  [8*`NUM_SOURCES-1:0] data_bus,
-input  [8*`NUM_SOURCES-1:0] len_bus,
-output [1*`NUM_SOURCES-1:0] rdreq_bus,
+input  [1*`N_SRC-1:0] have_msg_bus,
+input  [8*`N_SRC-1:0] data_bus,
+input  [8*`N_SRC-1:0] len_bus,
+output [1*`N_SRC-1:0] rdreq_bus,
 
-output reg [7:0]            tx_data,
-output reg                  tx_valid,
-input                       tx_ready,
+output reg [7:0]      tx_data,
+output reg            tx_valid,
+input                 tx_ready,
 
 // debug
-output [2:0]                        my_state,
-output [($clog2(`NUM_SOURCES)-1):0] my_current_source,
-output [7:0]                        my_cnt,
-output [7:0]                        my_crc
+output [2:0]                  my_state,
+output [($clog2(`N_SRC)-1):0] my_current_source,
+output [7:0]                  my_cnt,
+output [7:0]                  my_crc
 );
 assign my_state = state;
 assign my_current_source = current_source;
@@ -34,7 +34,7 @@ wire [7:0] current_data = data_bus[8*current_source+:8];
 
 
 
-reg [($clog2(`NUM_SOURCES)-1):0] current_source;
+reg [($clog2(`N_SRC)-1):0] current_source;
 reg [2:0] state;
 localparam [2:0] IDLE         = 0;
 localparam [2:0] SEND_PREFIX  = 1;
@@ -69,7 +69,7 @@ else
   
   if((state == IDLE) & !transition_cond)
     begin
-    if(current_source < (`NUM_SOURCES-1))
+    if(current_source < (`N_SRC-1))
       current_source <= current_source + 1'b1;
     else
       current_source <= 0;

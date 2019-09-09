@@ -9,7 +9,7 @@ input         rx_valid,
 output        rx_ready,
 
 output [7:0]  q,
-output [`NUM_SOURCES-1:0]  valid_bus
+output [`N_SRC-1:0]  valid_bus
 
 // debug
 //output [2:0]  my_state,
