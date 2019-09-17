@@ -37,11 +37,11 @@ output  adc1_cs_n,    // D13
 output  adc2_cs_n,    //      D14
 
 //// DDS
-//output  dds_io_upd,   // ad9952 datasheet page 7
-//output  dds_rst,
-//output  dds_cs_n,
-//inout   dds_sdio,
-//output  dds_sclk,
+output  dds_io_upd,   // ad9952 datasheet page 7
+output  dds_rst,
+output  dds_cs_n,
+inout   dds_sdio,
+output  dds_sclk,
 
 //// other control signals
 output reg        dac_gain,             // off/on analog signal attenuation
@@ -192,6 +192,25 @@ if_spi_multi #(.N_SLAVES(2)) adcs
   .have_msg(have_msg_bus[6:5]),
   .s_rdreq (rdreq_bus[6:5])
 );
+
+
+
+if_spi_9952 spi_dds
+(
+  .n_rst    (n_rst),
+  .clk      (fpga_clk_48),
+  .n_cs     (dds_cs_n),
+  .sclk     (dds_sclk),
+  .sdio     (dds_sdio),
+  .io_update(dds_io_upd),
+  .in_data  (master_data),
+  .in_ena   (valid_bus[7]),
+  .rd_req   (rdreq_bus[7]),
+  .out_data (slave_data_bus[7*8+:8]),
+  .have_msg (have_msg_bus[7]),
+  .len      (len_bus[7*8+:8])
+);
+assign dds_rst = 1;     // check it
 
 
 
