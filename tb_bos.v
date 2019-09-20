@@ -63,6 +63,8 @@ wire [7:0] my_master_data;
 wire [1*`N_SRC-1:0] my_valid_bus;
 wire [7:0] my_rx_data;
 wire my_rx_valid;
+wire [7:0] my_tx_data;
+wire my_tx_valid;
 
 // tri-state                       
 //assign dds_sdio = treg_dds_sdio;
@@ -126,7 +128,9 @@ bos i1
   .my_rx_data         (my_rx_data),
   .my_rx_valid        (my_rx_valid),
   .my_master_data     (my_master_data),
-  .my_valid_bus       (my_valid_bus)
+  .my_valid_bus       (my_valid_bus),
+  .my_tx_data         (my_tx_data),
+  .my_tx_valid        (my_tx_valid)
 );
 
 
@@ -145,6 +149,10 @@ task automatic send_to_rx;
 endtask
 
 always #10 fpga_clk_48 = !fpga_clk_48;
+
+always@(posedge dac_sclk)
+  if(!dac_sync_n)
+    dac_sdo = #5 $random;
 
 
 initial
@@ -165,7 +173,7 @@ initial
   
   send_to_rx(8'hDD);  // prefix
   send_to_rx(8'h01);  // address of ast
-  send_to_rx(8'd02);  // address of dest
+  send_to_rx(8'd00);  // address of dest
   send_to_rx(8'h06);  // len
   send_to_rx(8'h01);
   send_to_rx(8'h02);

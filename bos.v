@@ -96,16 +96,20 @@ output        sck_fpga,     // SPI control - sclk
 //input         sdatav_fpga   // SPI video - miso
 
 //// Debug
-input n_rst,
-output [7:0] my_rx_data,
-output my_rx_valid,
-output [7:0] my_master_data,
-output [1*`N_SRC-1:0] my_valid_bus
+input         n_rst,
+output [7:0]  my_rx_data,
+output        my_rx_valid,
+output [7:0]  my_master_data,
+output [1*`N_SRC-1:0] my_valid_bus,
+output [7:0]  my_tx_data,
+output        my_tx_valid
 );
 assign my_rx_data = rx_data;
 assign my_rx_valid = rx_valid;
 assign my_master_data = master_data;
 assign my_valid_bus = valid_bus;
+assign my_tx_data = tx_data;
+assign my_tx_valid = tx_valid;
 
 
 // address 0
