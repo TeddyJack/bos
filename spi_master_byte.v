@@ -1,26 +1,44 @@
-module spi_master_9952 #(CLK_DIV_EVEN = 8)
+// multi purpose SPI master than intended to work with two 8 bits-wide single clock FIFOs
+// "master->slave" FIFO must be SHOW AHEAD type
+// "slave->master" FIFO - as you wish, depends on your further logic
+
+
+module spi_master_byte
+#(
+  parameter CLK_DIV_EVEN = 8,
+  parameter CPOL = 0
+)
 (
   output reg sclk,
   output reg n_cs,
   output     mosi,
   input      miso,
-  output reg io_update,
-  output     high_z,
   
   input       n_rst,
   input       clk,
+  // connect to "master->slave" FIFO
   input       empty,
   input [7:0] data_i,
   output reg  rdreq,
-  
+  // connect to "slave->master" FIFO
   output reg [7:0] miso_reg,
-  output reg       wrreq
+  output reg       wrreq,
+  
+  output ready
 );
 
+assign ready = (state == IDLE);
+
+reg [7:0] mosi_reg;
+assign mosi = mosi_reg[7];
+
+localparam [7:0] QUARTER = CLK_DIV_EVEN[7:0] / 8'd4;
+localparam [7:0] THREEQRTRS = QUARTER + CLK_DIV_EVEN[7:0] / 8'd2;
 
 
 reg ena;
 reg [7:0] cnt_ena;
+
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     begin
@@ -41,12 +59,76 @@ always@(posedge clk or negedge n_rst)
       end
     end
 
-
     
-reg [7:0] mosi_reg;
+always@(posedge clk or negedge n_rst)
+  if(!n_rst)
+    sclk <= CPOL[0];
+  else if(!n_cs)
+    begin
+    if((cnt_ena == QUARTER) | (cnt_ena == THREEQRTRS))
+      sclk <= ~sclk;
+    end
+  else
+    sclk <= CPOL[0];
+
+
+
+reg state;
 reg [2:0] cnt_bit;
+localparam IDLE  = 1'b0;
+localparam SHIFT = 1'b1;
+    
+always@(posedge clk or negedge n_rst)
+  if(!n_rst)
+    begin
+    state <= IDLE;
+    n_cs <= 1;
+    end
+  else if(ena)
+    case(state)
+    IDLE:
+      begin
+      if(!empty)
+        begin
+        state <= SHIFT;
+        n_cs <= 0;
+        end
+      end
+    SHIFT:
+      begin
+      if((&cnt_bit) & empty)
+        begin
+        n_cs <= 1;
+        state <= IDLE;
+        end
+      end
+    default:
+      state <= IDLE;
+    endcase
+    
+always@(posedge clk or negedge n_rst)
+  if(!n_rst)
+    begin
+    rdreq <= 0;
+    wrreq <= 0;
+    end
+  else
+    begin
+    rdreq <= ena & load_cond;
+    wrreq <= ena & (&cnt_bit) & (state == SHIFT);
+    end
+// in case of read issues, wrreq should be delayed by 1 period (attach 1 extra reg)
+
+
 wire load_cond = !empty & ((state == IDLE) | (&cnt_bit));
-assign mosi = mosi_reg[7];
+// absolutely the same load_cond via "if" description
+//reg load_cond;
+//always@(*)
+//  case(state)
+//  IDLE:  load_cond = !empty;
+//  SHIFT: load_cond = !empty & (&cnt_bit);
+//  endcase
+
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     begin
@@ -65,59 +147,7 @@ always@(posedge clk or negedge n_rst)
       mosi_reg <= mosi_reg << 1;
       cnt_bit <= cnt_bit + 1'b1;
       end
-    end    
-
-
-
-reg state;
-localparam IDLE  = 1'b0;
-localparam SHIFT = 1'b1;
-always@(posedge clk or negedge n_rst)
-  if(!n_rst)
-    begin
-    state <= IDLE;
-    n_cs <= 1;
-    io_update <= 0;
     end
-  else if(ena)
-    case(state)
-    IDLE:
-      begin
-      io_update <= 0;
-      if(!empty)
-        begin
-        state <= SHIFT;
-        n_cs <= 0;
-        end
-      end
-    SHIFT:
-      begin
-      if((&cnt_bit) & empty)
-        begin
-        if(!read)
-          io_update <= 1;
-        n_cs <= 1;
-        state <= IDLE;
-        end
-      end
-    default:
-      state <= IDLE;
-    endcase
-
-
-    
-always@(posedge clk or negedge n_rst)
-  if(!n_rst)
-    begin
-    rdreq <= 0;
-    wrreq <= 0;
-    end
-  else
-    begin
-    rdreq <= ena & load_cond;
-    wrreq <= ena & (&cnt_bit) & (state == SHIFT);
-    end
-// in case of read issues, wrreq should be delayed by 1 period (attach 1 extra reg)
 
 
     
@@ -129,41 +159,8 @@ always@(posedge clk or negedge n_rst)
     miso_reg[0] <= miso;
     miso_reg[7:1] <= miso_reg[6:0];
     end
-
-    
-    
-localparam [7:0] QUARTER = CLK_DIV_EVEN[7:0] / 8'd4;
-localparam [7:0] THREEQRTRS = QUARTER + CLK_DIV_EVEN[7:0] / 8'd2;
-always@(posedge clk or negedge n_rst)
-  if(!n_rst)
-    sclk <= 0;
-  else if(!n_cs | io_update)
-    begin
-    if((cnt_ena == QUARTER) | (cnt_ena == THREEQRTRS))
-      sclk <= ~sclk;
-    end
-  else
-    sclk <= 0;
-
-
-
-wire n_rst_z = n_rst & !n_cs;
-reg [7:0] cnt_z;
-reg read;
-always@(posedge clk or negedge n_rst_z)
-  if(!n_rst_z)
-    begin
-    cnt_z <= 0;
-    read <= 0;
-    end
-  else if(ena)
-    begin
-    cnt_z <= cnt_z + 1'b1;
-    if(cnt_z == 8'd0)
-      read <= mosi;
-    end
-assign high_z = read & (cnt_z > 8'd7);
-
-
-
+  
+  
+  
+  
 endmodule

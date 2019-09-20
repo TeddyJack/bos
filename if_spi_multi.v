@@ -1,7 +1,11 @@
-module if_spi_multi #(parameter N_SLAVES = 3)
+module if_spi_multi
+#(
+  parameter N_SLAVES = 3,
+  parameter CPOL = 0
+)
 (
-  input                     clk,
   input                     n_rst,
+  input                     clk,
 
   output                    sclk,
   output                    mosi,
@@ -9,95 +13,76 @@ module if_spi_multi #(parameter N_SLAVES = 3)
   output  [1*N_SLAVES-1:0]  n_cs_bus,
   
   input   [7:0]             m_din,
-  input   [1*N_SLAVES-1:0]  m_wrreq,
+  input   [1*N_SLAVES-1:0]  m_wrreq_bus,
   
-  output  [8*N_SLAVES-1:0]  s_dout,
-  output  [8*N_SLAVES-1:0]  len,
-  output  [1*N_SLAVES-1:0]  have_msg,
-  input   [1*N_SLAVES-1:0]  s_rdreq,
+  output  [8*N_SLAVES-1:0]  s_dout_bus,
+  output  [8*N_SLAVES-1:0]  len_bus,
+  output  [1*N_SLAVES-1:0]  have_msg_bus,
+  input   [1*N_SLAVES-1:0]  s_rdreq_bus,
+  
   // debug
-  output [$clog2(N_SLAVES)-1:0] my_select,
-  output [15:0]                 my_m_dout,
-  output [1*N_SLAVES-1:0]       my_m_rdreq,
-  output [1*N_SLAVES-1:0]       my_m_empty,
-  output [15:0]                 my_s_din,
-  output [1*N_SLAVES-1:0]       my_s_wrreq,
-  output                        my_busy,
-  output                        my_cur_m_empty,
-  output                        my_go
+  output [$clog2(N_SLAVES)-1:0] my_select
 );
 assign my_select = select;
-assign my_m_dout = m_dout[1];
-assign my_m_rdreq = m_rdreq;
-assign my_m_empty = m_empty;
-assign my_s_din = s_din;
-assign my_s_wrreq = s_wrreq;
-assign my_busy = busy;
-assign my_cur_m_empty = cur_m_empty;
-assign my_go = go;
+
 
 reg [$clog2(N_SLAVES)-1:0] select;
 
-wire [15:0]           m_dout [N_SLAVES-1:0];
-wire [1*N_SLAVES-1:0] m_rdreq;
-wire [1*N_SLAVES-1:0] m_empty;
+wire [7:0]            m_dout_bus [N_SLAVES-1:0];
+wire [1*N_SLAVES-1:0] m_empty_bus;
+wire [1*N_SLAVES-1:0] m_rdreq_bus;
 
-wire [15:0]           s_din;
-wire [1*N_SLAVES-1:0] s_wrreq;
+wire [7:0]            s_din;
+wire [1*N_SLAVES-1:0] s_wrreq_bus;
+wire [1*N_SLAVES-1:0] s_empty_bus;
 
-assign n_cs_bus = n_cs << select;
+wire m_rdreq;
+wire s_wrreq;
+wire n_cs;
+
+
+// multiplexers
+wire [7:0] m_dout = m_dout_bus[select];
+wire       m_empty = m_empty_bus[select];
+// demultiplexers
+assign m_rdreq_bus = m_rdreq << select;
+assign s_wrreq_bus = s_wrreq << select;
+assign n_cs_bus = (n_cs << select) | (~(1'b1 << select));
 
 
 
-spi_master
-#(
-  .DATA_WIDTH       (16),
-  .NUM_PORTS        (1),
-  .CLK_DIVIDER_WIDTH(8),
-  .SAMPLE_PHASE     (0)
-)
-spi_master_inst
+assign have_msg_bus = ~s_empty_bus;
+
+
+spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL)) spi_master_inst
 (
-  .clk        (clk),
-  .resetb     (n_rst),
-  .CPOL       (0), 
-  .CPHA       (0),
-  .clk_divider(6),
+  .sclk     (sclk),
+  .n_cs     (n_cs),
+  .mosi     (mosi),
+  .miso     (miso),
   
-  .go        (go),
-  .datai     (cur_m_dout),
-  .datao     (s_din),    // output
-  .busy      (busy),
-  .done      (done),         // output
+  .n_rst    (n_rst),
+  .clk      (clk),
   
-  .dout      (miso),
-  .din       (mosi),
-  .csb       (n_cs),
-  .sclk      (sclk)
+  .empty    (m_empty),
+  .data_i   (m_dout),
+  .rdreq    (m_rdreq),
+  
+  .miso_reg (s_din),
+  .wrreq    (s_wrreq),
+  
+  .ready    (ready)
 );
-wire        busy;
-wire        done;
-wire        n_cs;
+wire ready;
 
 
-reg go;
-reg datao_ena;
-reg done_delayed;
 
 always@(posedge clk or negedge n_rst)
 if(!n_rst)
-  begin
-  go <= 0;
-  datao_ena <= 0;
-  done_delayed <= 0;
   select <= 0;
-  end
 else
   begin
-  done_delayed <= done;
-  go <= !(busy | cur_m_empty | go);         // same as (!busy & !cur_m_empty & !go)
-  datao_ena <= done & !done_delayed;
-  if(cur_m_empty & !busy)
+  if(m_empty & ready)
     begin
     if(select < (N_SLAVES-1'b1))
       select <= select + 1'b1;
@@ -112,43 +97,37 @@ else
 genvar i;
 generate for(i=0; i<N_SLAVES; i=i+1)
   begin: gen
-  spi_fifo #(.SIZE(256), .WIDTH_IN(8), .WIDTH_OUT(16), .SHOW_AHEAD("OFF")) fifo_master
+  sc_fifo fifo_master
   (
-    .aclr   (!n_rst),
-    .data   (m_din),
-    .rdclk  (clk),
-    .rdreq  (m_rdreq[i]),
-    .wrclk  (clk),
-    .wrreq  (m_wrreq[i]),
-    .q      (m_dout[i]),
-    .rdempty(m_empty[i]),
-    .rdusedw(),
-    .wrfull ()
+    .aclr (!n_rst),
+    .clock(clk),
+    .data (m_din),
+    .rdreq(m_rdreq_bus[i]),
+    .wrreq(m_wrreq_bus[i]),
+    .empty(m_empty_bus[i]),
+    .full (),
+    .q    (m_dout_bus[i])
   );
-
-  spi_fifo #(.SIZE(128), .WIDTH_IN(16), .WIDTH_OUT(8), .SHOW_AHEAD("OFF")) fifo_slave
+  
+  sc_fifo fifo_slave
   (
-    .aclr   (!n_rst),
-    .data   (s_din),
-    .rdclk  (clk),
-    .rdreq  (s_rdreq[i]),
-    .wrclk  (clk),
-    .wrreq  (s_wrreq[i]),
-    .q      (s_dout[8*i+:8]),
-    .rdempty(s_empty[i]),
-    .rdusedw(len[8*i+:8]),
-    .wrfull ()
+    .aclr (!n_rst),
+    .clock(clk),
+    .data (s_din),
+    .rdreq(s_rdreq_bus[i]),
+    .wrreq(s_wrreq_bus[i]),
+    .empty(s_empty_bus[i]),
+    .full (),
+    .q    (s_dout_bus[8*i+:8]),
+    .usedw(len_bus[8*i+:6])
   );
+  
+  assign len_bus[(8*i+6)+:2] = 2'b00; // fill with zeros
   end
+  
 endgenerate
 
-  
-wire [1*N_SLAVES-1:0] s_empty;
-assign have_msg = ~s_empty;
-assign m_rdreq = go << select;
-assign s_wrreq = datao_ena << select;
-wire cur_m_empty = m_empty[select];
-wire [15:0] cur_m_dout = m_dout[select];
+
 
 
 endmodule

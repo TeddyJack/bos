@@ -44,16 +44,16 @@ inout   dds_sdio,
 output  dds_sclk,
 
 //// other control signals
-output reg        dac_gain,             // off/on analog signal attenuation
-output reg        dac_switch_out_fpga,  // differential/regular analog signal
-output reg        dac_ena_out_fpga,     // disable/enable output of analog signal
-output reg [3:0]  a,                    // address on multiplexer to select Q[i]
-output reg        load_pr_3v7,          // connects mux output with 1.65 kOhm load
-output reg        load_pdr,             // connects mux output with 240 Ohm load
-output reg        off_pr_digital_fpga,  // off/on overvoltage to digital inputs of BOS
-output reg        off_vcore_fpga,       // off/on v_core
-output reg        off_vdigital_fpga,    // off_on v_digital
-output reg        functional,           // off/on level translators
+output        dac_gain,             // off/on analog signal attenuation
+output        dac_switch_out_fpga,  // differential/regular analog signal
+output        dac_ena_out_fpga,     // disable/enable output of analog signal
+output [3:0]  a,                    // address on multiplexer to select Q[i]
+output        load_pr_3v7,          // connects mux output with 1.65 kOhm load
+output        load_pdr,             // connects mux output with 240 Ohm load
+output        off_pr_digital_fpga,  // off/on overvoltage to digital inputs of BOS
+output        off_vcore_fpga,       // off/on v_core
+output        off_vdigital_fpga,    // off_on v_digital
+output        functional,           // off/on level translators
 
 //// RAM
 //output [12:0] sdram_a,
@@ -95,43 +95,31 @@ output        sck_fpga,     // SPI control - sclk
 //output        sckv_fpga,    // SPI video - sclk    // 48 MHz
 //input         sdatav_fpga   // SPI video - miso
 
-//// DEBUG
-input                       n_rst,
-output [2:0]                my_state,
-output [$clog2(`N_SRC)-1:0] my_current_source,
-output [7:0]                my_cnt,
-output [7:0]                my_rx_data,
-output                      my_rx_valid,
-output [7:0]                my_tx_data,
-output                      my_tx_valid,
-output                      my_tx_ready,
-output [1*`N_SRC-1:0]       my_rdreq_bus,
-output [7:0]                my_crc,
-output [1*`N_SRC-1:0]       my_have_msg_bus,
-output [8*`N_SRC-1:0]       my_len_bus
+//// Debug
+input n_rst,
+output [7:0] my_rx_data,
+output my_rx_valid,
+output [7:0] my_master_data,
+output [1*`N_SRC-1:0] my_valid_bus
 );
 assign my_rx_data = rx_data;
 assign my_rx_valid = rx_valid;
-assign my_tx_data = tx_data;
-assign my_tx_valid = tx_valid;
-assign my_tx_ready = tx_ready;
-assign my_rdreq_bus = rdreq_bus;
-assign my_have_msg_bus = have_msg_bus;
-assign my_len_bus = len_bus;
+assign my_master_data = master_data;
+assign my_valid_bus = valid_bus;
 
-       
-       
-if_spi #(.D_WIDTH(16)) potentiometer_1
+
+// address 0
+if_spi #(.CPOL(0)) potentiometer_1
 (
   .n_rst    (n_rst),
   .clk      (fpga_clk_48),
-  .cs       (dac_sync_n),
+  .n_cs     (dac_sync_n),
   .sclk     (dac_sclk),
   .mosi     (dac_din),
   .miso     (dac_sdo),
   .in_data  (master_data),
   .in_ena   (valid_bus[0]),
-  .rd_req   (rdreq_bus[0]),
+  .enc_rdreq(rdreq_bus[0]),
   .out_data (slave_data_bus[8*0+:8]),
   .have_msg (have_msg_bus[0]),
   .len      (len_bus[8*0+:8])
@@ -139,62 +127,62 @@ if_spi #(.D_WIDTH(16)) potentiometer_1
 assign dac_rst_n = 1'b1; // no hardware reset
 
 
-
-if_spi_multi #(.N_SLAVES(3)) potentiometers
+// addresses 1-3
+if_spi_multi #(.N_SLAVES(3), .CPOL(0)) potentiometers
 (
-  .n_rst   (n_rst),
-  .clk     (fpga_clk_48),
-  .sclk    (sclk_power),
-  .mosi    (din_power),
-  .miso    (),
-  .n_cs_bus({sync_vpr_digital_n, sync_digital_n, sync_core_n}),  
-  .m_din   (master_data),
-  .m_wrreq (valid_bus[3:1]),
-  .s_dout  (slave_data_bus[8*1+:8*3]),
-  .len     (len_bus[8*1+:8*3]),
-  .have_msg(have_msg_bus[3:1]),
-  .s_rdreq (rdreq_bus[3:1])
+  .n_rst       (n_rst),
+  .clk         (fpga_clk_48),
+  .sclk        (sclk_power),
+  .mosi        (din_power),
+  .miso        (),
+  .n_cs_bus    ({sync_vpr_digital_n, sync_digital_n, sync_core_n}),  
+  .m_din       (master_data),
+  .m_wrreq_bus (valid_bus[3:1]),
+  .s_dout_bus  (slave_data_bus[8*1+:8*3]),
+  .len_bus     (len_bus[8*1+:8*3]),
+  .have_msg_bus(have_msg_bus[3:1]),
+  .s_rdreq_bus (rdreq_bus[3:1])
 );
 assign rst_power_n = 1'b1;
 
 
-
-if_spi #(.D_WIDTH(16)) adc_1
+// address 4
+if_spi #(.CPOL(1)) adc_1
 (
   .n_rst    (n_rst),
   .clk      (fpga_clk_48),
-  .cs       (adc_cs_pwr_n),
+  .n_cs     (adc_cs_pwr_n),
   .sclk     (adc_sclk_pwr),
   .mosi     (adc_din_pwr),
   .miso     (adc_dout_pwr),
   .in_data  (master_data),
   .in_ena   (valid_bus[4]),
-  .rd_req   (rdreq_bus[4]),
+  .enc_rdreq(rdreq_bus[4]),
   .out_data (slave_data_bus[8*4+:8]),
   .have_msg (have_msg_bus[4]),
   .len      (len_bus[8*4+:8])
 );
 
-
-
-if_spi_multi #(.N_SLAVES(2)) adcs
+/*
+// addresses 5-6
+if_spi_multi #(.N_SLAVES(2), .CPOL(1)) adcs
 (
-  .n_rst   (n_rst),
-  .clk     (fpga_clk_48),
-  .sclk    (adc_sclk),
-  .mosi    (adc_din),
-  .miso    (adc_dout),
-  .n_cs_bus({adc2_cs_n, adc1_cs_n}),  
-  .m_din   (master_data),
-  .m_wrreq (valid_bus[6:5]),
-  .s_dout  (slave_data_bus[8*5+:8*2]),
-  .len     (len_bus[8*5+:8*2]),
-  .have_msg(have_msg_bus[6:5]),
-  .s_rdreq (rdreq_bus[6:5])
+  .n_rst       (n_rst),
+  .clk         (fpga_clk_48),
+  .sclk        (adc_sclk),
+  .mosi        (adc_din),
+  .miso        (adc_dout),
+  .n_cs_bus    ({adc2_cs_n, adc1_cs_n}),  
+  .m_din       (master_data),
+  .m_wrreq_bus (valid_bus[6:5]),
+  .s_dout_bus  (slave_data_bus[8*5+:8*2]),
+  .len_bus     (len_bus[8*5+:8*2]),
+  .have_msg_bus(have_msg_bus[6:5]),
+  .s_rdreq_bus (rdreq_bus[6:5])
 );
 
 
-
+// address 7
 if_spi_9952 spi_dds
 (
   .n_rst    (n_rst),
@@ -205,31 +193,57 @@ if_spi_9952 spi_dds
   .io_update(dds_io_upd),
   .in_data  (master_data),
   .in_ena   (valid_bus[7]),
-  .rd_req   (rdreq_bus[7]),
-  .out_data (slave_data_bus[7*8+:8]),
+  .enc_rdreq(rdreq_bus[7]),
+  .out_data (slave_data_bus[8*7+:8]),
   .have_msg (have_msg_bus[7]),
-  .len      (len_bus[7*8+:8])
+  .len      (len_bus[8*7+:8])
 );
-assign dds_rst = 1;     // check it
+assign dds_rst = 0;
 
 
-
-if_spi #(.D_WIDTH(24)) spi_bos
+// address 8
+if_spi #(.CPOL(0)) spi_bos
 (
   .n_rst    (n_rst),
   .clk      (fpga_clk_48),
-  .cs       (sl_fpga),
+  .n_cs     (sl_fpga),
   .sclk     (sck_fpga),
   .mosi     (sdatai_fpga),
   .miso     (sdatao_fpga),
   .in_data  (master_data),
   .in_ena   (valid_bus[8]),
-  .rd_req   (rdreq_bus[8]),
+  .enc_rdreq(rdreq_bus[8]),
   .out_data (slave_data_bus[8*8+:8]),
   .have_msg (have_msg_bus[8]),
   .len      (len_bus[8*8+:8])
 );
 
+
+// addresses 11-20
+fpga_regs fpga_regs
+(
+  .n_rst              (n_rst),
+  .clk                (fpga_clk_48),
+  .master_data        (master_data),
+  .valid_bus          (valid_bus[20:11]),
+  .rdreq_bus          (rdreq_bus[20:11]),
+  .have_msg_bus       (have_msg_bus[20:11]),
+  .slave_data_bus     (slave_data_bus[8*11+:8*10]),
+  .len_bus            (len_bus[8*11+:8*10]),
+  
+  .dac_gain           (dac_gain),           
+  .dac_switch_out_fpga(dac_switch_out_fpga),
+  .dac_ena_out_fpga   (dac_ena_out_fpga),   
+  .a                  (a),                  
+  .load_pr_3v7        (load_pr_3v7),        
+  .load_pdr           (load_pdr),           
+  .off_pr_digital_fpga(off_pr_digital_fpga),
+  .off_vcore_fpga     (off_vcore_fpga),     
+  .off_vdigital_fpga  (off_vdigital_fpga),  
+  .functional         (functional),         
+  .video_in_select    ()
+);
+*/
 
 
 cmd_decoder cmd_decoder
@@ -257,12 +271,7 @@ cmd_encoder cmd_encoder
   .rdreq_bus    (rdreq_bus),
   .tx_data      (tx_data),
   .tx_valid     (tx_valid),
-  .tx_ready     (tx_ready),
-  // debug
-  .my_state         (my_state),
-  .my_current_source(my_current_source),
-  .my_cnt           (my_cnt),
-  .my_crc           (my_crc)
+  .tx_ready     (tx_ready)
 );
 wire [1*`N_SRC-1:0] have_msg_bus;
 wire [8*`N_SRC-1:0] slave_data_bus;
@@ -299,24 +308,7 @@ wire        rx_ready;
 
 
 
-reg video_in_select;    // 0 = parallel, 1 = serial
-always@(posedge fpga_clk_48)
-  begin
-  if(valid_bus[11]) a                   <= master_data[3:0];
-  if(valid_bus[12]) begin
-                    load_pr_3v7         <= master_data[1];
-                    load_pdr            <= master_data[0];
-                    end
-  if(valid_bus[13]) dac_gain            <= master_data[0];           
-  if(valid_bus[14]) dac_switch_out_fpga <= master_data[0];
-  if(valid_bus[15]) dac_ena_out_fpga    <= master_data[0];
-  if(valid_bus[16]) off_pr_digital_fpga <= master_data[0];
-  if(valid_bus[17]) functional          <= master_data[0];
-  if(valid_bus[18]) video_in_select     <= master_data[0];
-  if(valid_bus[19]) off_vcore_fpga      <= master_data[0];
-  if(valid_bus[20]) off_vdigital_fpga   <= master_data[0];
 
-  end
 
 
 endmodule

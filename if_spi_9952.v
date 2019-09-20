@@ -11,7 +11,7 @@ module if_spi_9952
   input  [7:0]  in_data,
   input         in_ena,
   
-  input         rd_req,
+  input         enc_rdreq,
   output [7:0]  out_data,
   output        have_msg,
   output [7:0]  len
@@ -34,7 +34,7 @@ spi_master_9952 #(.CLK_DIV_EVEN(8)) spi_master_9952_inst
   .n_rst    (!rst_internal),
   .clk      (clk),
   
-  .have_data(!m_empty),
+  .empty    (m_empty),
   .data_i   (m_dout),
   .rdreq    (m_rdreq),
   
@@ -69,7 +69,7 @@ sc_fifo fifo_slave
   .aclr (rst_internal),
   .clock(clk),
   .data (s_din),
-  .rdreq(rd_req),
+  .rdreq(enc_rdreq),
   .wrreq(s_wrreq),
   .empty(s_empty),
   .full (s_full),

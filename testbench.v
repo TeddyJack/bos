@@ -75,6 +75,7 @@ begin
   send_to_rx(8'h04);
   send_to_rx(8'h05);
   send_to_rx(8'h06);
+  send_to_rx(8'h15);
   
   $display("Testbench end");
   $stop;

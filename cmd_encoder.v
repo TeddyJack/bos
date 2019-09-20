@@ -61,11 +61,13 @@ if(!n_rst)
   crc <= 0;
   current_len <= 0;
   rdreq <= 0;
+  tx_data <= 0;
   end
 else
   begin
   tx_valid <= transition_cond & (state != SEND_CRC);
-  rdreq <= tx_valid & ((state == SEND_LEN) | (state == SEND_DATA)) & (cnt < current_len);
+  //rdreq <= tx_valid & ((state == SEND_LEN) | (state == SEND_DATA)) & (cnt < current_len); // normal
+  rdreq <= tx_valid & (state == SEND_DATA) & (cnt <= current_len); // show ahead
   
   if((state == IDLE) & !transition_cond)
     begin
