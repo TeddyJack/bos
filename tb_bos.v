@@ -165,9 +165,13 @@ initial
   //fpga_clk_100 = 0;
   //sdatao_fpga = 0;
   
-  n_rst = 1;
+  n_rst = 0;
   fpga_clk_48 = 0;
   rx = 1;
+  
+  #100
+  
+  n_rst = 1;
 
   #10000
   

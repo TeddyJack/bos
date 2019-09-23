@@ -19,22 +19,13 @@ output [($clog2(`N_SRC)-1):0] my_current_source,
 output [7:0]                  my_cnt,
 output [7:0]                  my_crc
 );
-assign my_state = state;
-assign my_current_source = current_source;
-assign my_cnt = cnt;
-assign my_crc = crc;
-
-
 
 
 
 reg [7:0] current_len;
-assign rdreq_bus = rdreq << current_source;
+reg [($clog2(`N_SRC)-1):0] current_source;
 wire [7:0] current_data = data_bus[8*current_source+:8];
 
-
-
-reg [($clog2(`N_SRC)-1):0] current_source;
 reg [2:0] state;
 localparam [2:0] IDLE         = 0;
 localparam [2:0] SEND_PREFIX  = 1;
@@ -47,6 +38,7 @@ localparam [2:0] SEND_CRC     = 6;
 reg [7:0] cnt;
 reg [7:0] crc;
 reg rdreq;
+assign rdreq_bus = rdreq << current_source;
 
 wire transition_cond = tx_ready & !tx_valid & ((state != IDLE) | have_msg_bus[current_source]);
 
@@ -128,8 +120,12 @@ else
     endcase
   end
 
-  
 
 
+// debug assigns
+assign my_state = state;
+assign my_current_source = current_source;
+assign my_cnt = cnt;
+assign my_crc = crc;
   
 endmodule

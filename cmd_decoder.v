@@ -35,7 +35,7 @@ output [`N_SRC-1:0]  valid_bus
 
 assign rx_ready = 1;  // TODO
 
-assign valid_bus = valid << dest;
+
 
 
 reg [7:0] dest;
@@ -43,6 +43,9 @@ reg [7:0] len;
 reg [7:0] cnt;
 reg [7:0] crc_calcked;
 reg       clear;
+reg       valid;
+
+assign valid_bus = valid << dest;
 
 reg [2:0] state;
 localparam READ_PREFIX  = 0;
@@ -52,6 +55,15 @@ localparam READ_LEN     = 3;
 localparam READ_DATA    = 4;
 localparam READ_CRC     = 5;
 localparam FORWARD_DATA = 6;
+
+wire empty;
+wire rdreq = !empty & (state == FORWARD_DATA);
+  
+reg [31:0] cnt_timeout;
+localparam [31:0] CNT_LIMIT = 50000000 * `TIMEOUT_MSG / 1000 - 1;
+wire rst_timeout = (cnt_timeout == CNT_LIMIT);
+
+
 
 always@(posedge clk or negedge n_rst or posedge rst_timeout)
   begin
@@ -123,11 +135,8 @@ always@(posedge clk or negedge n_rst or posedge rst_timeout)
     end
   end
 
-  
-localparam [31:0] CNT_LIMIT = 50000000 * `TIMEOUT_MSG / 1000 - 1;   // ignore message about constant overflow
-  
-reg [31:0] cnt_timeout;
-  
+
+
 always@(posedge clk or negedge n_rst)
   begin
   if(!n_rst)
@@ -140,8 +149,8 @@ always@(posedge clk or negedge n_rst)
       cnt_timeout <= cnt_timeout + 1'b1;
     end
   end
-  
-wire rst_timeout = (cnt_timeout == CNT_LIMIT);
+
+
 
 fifo_dc fifo_dc
 (
@@ -155,10 +164,9 @@ fifo_dc fifo_dc
   .full (),
   .q    (q)
 );
-wire empty;
-wire rdreq = !empty & (state == FORWARD_DATA);
 
-reg valid;
+
+
 always@(posedge clk or negedge n_rst)
   begin
   if(!n_rst)

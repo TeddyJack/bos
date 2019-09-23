@@ -17,7 +17,23 @@ module if_spi #(parameter CPOL = 0)
   output [7:0]  len
 );
 
+
+
+wire        m_empty;
+wire [7:0]  m_dout;
+wire        m_rdreq;
+wire        m_full;
+wire [7:0]  s_din;
+wire        s_wrreq;
+wire        s_empty;
+wire        s_full;
+wire [5:0]  used;
+
+assign have_msg = !s_empty;
+assign len = {2'b00, used};
 wire rst_internal = !n_rst | m_full | s_full;
+
+
 
 spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL)) spi_master_inst
 (
@@ -36,8 +52,7 @@ spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL)) spi_master_inst
   .miso_reg (s_din),
   .wrreq    (s_wrreq)
 );
-wire [7:0] s_din;
-wire s_wrreq;
+
 
 
 sc_fifo fifo_master
@@ -51,10 +66,8 @@ sc_fifo fifo_master
   .full (m_full),
   .q    (m_dout)
 );
-wire m_empty;
-wire [7:0] m_dout;
-wire m_rdreq;
-wire m_full;
+
+
 
 sc_fifo fifo_slave
 (
@@ -68,10 +81,7 @@ sc_fifo fifo_slave
   .q    (out_data),
   .usedw(used)
 );
-wire s_empty;
-wire s_full;
-assign have_msg = !s_empty;
-wire [5:0] used;
-assign len = {2'b00, used};
+
+
   
 endmodule

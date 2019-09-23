@@ -104,12 +104,23 @@ output [1*`N_SRC-1:0] my_valid_bus,
 output [7:0]  my_tx_data,
 output        my_tx_valid
 );
-assign my_rx_data = rx_data;
-assign my_rx_valid = rx_valid;
-assign my_master_data = master_data;
-assign my_valid_bus = valid_bus;
-assign my_tx_data = tx_data;
-assign my_tx_valid = tx_valid;
+
+
+wire [7:0]        master_data;
+wire [`N_SRC-1:0] valid_bus;
+
+localparam PRESCALE = 50000000 / (115200 * 8);	// = fclk / (baud * 8)
+wire [7:0]  rx_data;
+wire        rx_valid;
+wire        tx_ready;
+wire [7:0]  tx_data;
+wire        tx_valid;
+wire        rx_ready;
+
+wire [1*`N_SRC-1:0] have_msg_bus;
+wire [8*`N_SRC-1:0] slave_data_bus;
+wire [8*`N_SRC-1:0] len_bus;
+wire [1*`N_SRC-1:0] rdreq_bus;
 
 
 // address 0
@@ -260,8 +271,6 @@ cmd_decoder cmd_decoder
   .q        (master_data),
   .valid_bus(valid_bus)
 );
-wire [7:0]        master_data;
-wire [`N_SRC-1:0] valid_bus;
 
 
 
@@ -277,10 +286,6 @@ cmd_encoder cmd_encoder
   .tx_valid     (tx_valid),
   .tx_ready     (tx_ready)
 );
-wire [1*`N_SRC-1:0] have_msg_bus;
-wire [8*`N_SRC-1:0] slave_data_bus;
-wire [8*`N_SRC-1:0] len_bus;
-wire [1*`N_SRC-1:0] rdreq_bus;
 
 
 
@@ -302,17 +307,15 @@ uart uart
   // Configuration
   .prescale           (PRESCALE)
 );
-localparam PRESCALE = 50000000 / (115200 * 8);	// = fclk / (baud * 8)
-wire [7:0]  rx_data;
-wire        rx_valid;
-wire        tx_ready;
-wire [7:0]  tx_data;
-wire        tx_valid;
-wire        rx_ready;
 
 
 
-
-
+// debug assigns
+assign my_rx_data = rx_data;
+assign my_rx_valid = rx_valid;
+assign my_master_data = master_data;
+assign my_valid_bus = valid_bus;
+assign my_tx_data = tx_data;
+assign my_tx_valid = tx_valid;
 
 endmodule

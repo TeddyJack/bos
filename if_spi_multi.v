@@ -23,7 +23,7 @@ module if_spi_multi
   // debug
   output [$clog2(N_SLAVES)-1:0] my_select
 );
-assign my_select = select;
+
 
 
 reg [$clog2(N_SLAVES)-1:0] select;
@@ -31,6 +31,7 @@ reg [$clog2(N_SLAVES)-1:0] select;
 wire [7:0]            m_dout_bus [N_SLAVES-1:0];
 wire [1*N_SLAVES-1:0] m_empty_bus;
 wire [1*N_SLAVES-1:0] m_rdreq_bus;
+wire ready;
 
 wire [7:0]            s_din;
 wire [1*N_SLAVES-1:0] s_wrreq_bus;
@@ -49,9 +50,8 @@ assign m_rdreq_bus = m_rdreq << select;
 assign s_wrreq_bus = s_wrreq << select;
 assign n_cs_bus = (n_cs << select) | (~(1'b1 << select));
 
-
-
 assign have_msg_bus = ~s_empty_bus;
+
 
 
 spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL)) spi_master_inst
@@ -73,7 +73,6 @@ spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL)) spi_master_inst
   
   .ready    (ready)
 );
-wire ready;
 
 
 
@@ -91,9 +90,8 @@ else
     end
   end
 
-  
-  
-  
+
+
 genvar i;
 generate for(i=0; i<N_SLAVES; i=i+1)
   begin: gen
@@ -127,6 +125,10 @@ generate for(i=0; i<N_SLAVES; i=i+1)
   
 endgenerate
 
+
+
+// debug assigns
+assign my_select = select;
 
 
 

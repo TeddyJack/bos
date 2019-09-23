@@ -27,17 +27,25 @@ module spi_master_byte
   output ready
 );
 
-assign ready = (state == IDLE);
+
 
 reg [7:0] mosi_reg;
+reg       ena;
+reg [7:0] cnt_ena;
+reg       state;
+reg [2:0] cnt_bit;
+
+localparam IDLE  = 1'b0;
+localparam SHIFT = 1'b1;
+
+assign ready = (state == IDLE);
 assign mosi = mosi_reg[7];
+wire load_cond = !empty & ((state == IDLE) | (&cnt_bit));
 
 localparam [7:0] QUARTER = CLK_DIV_EVEN[7:0] / 8'd4;
 localparam [7:0] THREEQRTRS = QUARTER + CLK_DIV_EVEN[7:0] / 8'd2;
 
 
-reg ena;
-reg [7:0] cnt_ena;
 
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
@@ -59,7 +67,8 @@ always@(posedge clk or negedge n_rst)
       end
     end
 
-    
+
+
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     sclk <= CPOL[0];
@@ -73,11 +82,6 @@ always@(posedge clk or negedge n_rst)
 
 
 
-reg state;
-reg [2:0] cnt_bit;
-localparam IDLE  = 1'b0;
-localparam SHIFT = 1'b1;
-    
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     begin
@@ -105,6 +109,8 @@ always@(posedge clk or negedge n_rst)
     default:
       state <= IDLE;
     endcase
+
+
     
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
@@ -120,14 +126,6 @@ always@(posedge clk or negedge n_rst)
 // in case of read issues, wrreq should be delayed by 1 period (attach 1 extra reg)
 
 
-wire load_cond = !empty & ((state == IDLE) | (&cnt_bit));
-// absolutely the same load_cond via "if" description
-//reg load_cond;
-//always@(*)
-//  case(state)
-//  IDLE:  load_cond = !empty;
-//  SHIFT: load_cond = !empty & (&cnt_bit);
-//  endcase
 
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
