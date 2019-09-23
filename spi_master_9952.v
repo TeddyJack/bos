@@ -1,4 +1,4 @@
-module spi_master_9952 #(CLK_DIV_EVEN = 8)
+module spi_master_9952 #(parameter CLK_DIV_EVEN = 8)
 (
   output reg sclk,
   output reg n_cs,
@@ -18,9 +18,26 @@ module spi_master_9952 #(CLK_DIV_EVEN = 8)
 );
 
 
-
+reg [7:0] mosi_reg;
+reg [2:0] cnt_bit;
+reg state;
+localparam IDLE  = 1'b0;
+localparam SHIFT = 1'b1;
+reg [7:0] cnt_z;
+reg read;
 reg ena;
 reg [7:0] cnt_ena;
+
+wire load_cond = !empty & ((state == IDLE) | (&cnt_bit));
+assign mosi = mosi_reg[7];
+wire n_rst_z = n_rst & !n_cs;
+assign high_z = read & (cnt_z > 8'd7);
+
+localparam [7:0] QUARTER = CLK_DIV_EVEN[7:0] / 8'd4;
+localparam [7:0] THREEQRTRS = QUARTER + CLK_DIV_EVEN[7:0] / 8'd2;
+
+
+
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     begin
@@ -41,12 +58,8 @@ always@(posedge clk or negedge n_rst)
       end
     end
 
-
     
-reg [7:0] mosi_reg;
-reg [2:0] cnt_bit;
-wire load_cond = !empty & ((state == IDLE) | (&cnt_bit));
-assign mosi = mosi_reg[7];
+
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     begin
@@ -69,9 +82,6 @@ always@(posedge clk or negedge n_rst)
 
 
 
-reg state;
-localparam IDLE  = 1'b0;
-localparam SHIFT = 1'b1;
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     begin
@@ -130,10 +140,8 @@ always@(posedge clk or negedge n_rst)
     miso_reg[7:1] <= miso_reg[6:0];
     end
 
-    
-    
-localparam [7:0] QUARTER = CLK_DIV_EVEN[7:0] / 8'd4;
-localparam [7:0] THREEQRTRS = QUARTER + CLK_DIV_EVEN[7:0] / 8'd2;
+
+
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     sclk <= 0;
@@ -147,9 +155,6 @@ always@(posedge clk or negedge n_rst)
 
 
 
-wire n_rst_z = n_rst & !n_cs;
-reg [7:0] cnt_z;
-reg read;
 always@(posedge clk or negedge n_rst_z)
   if(!n_rst_z)
     begin
@@ -162,7 +167,6 @@ always@(posedge clk or negedge n_rst_z)
     if(cnt_z == 8'd0)
       read <= mosi;
     end
-assign high_z = read & (cnt_z > 8'd7);
 
 
 

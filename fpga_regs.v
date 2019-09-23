@@ -7,8 +7,8 @@ module fpga_regs
   
   input  [20:11]     rdreq_bus,
   output [20:11]     have_msg_bus,
-  output [21*8-1:11] slave_data_bus,
-  output [21*8-1:11] len_bus,
+  output [20*8+7:11*8] slave_data_bus,
+  output [20*8+7:11*8] len_bus,
   
   output reg         dac_gain,             // off/on analog signal attenuation
   output reg         dac_switch_out_fpga,  // differential/regular analog signal
@@ -24,7 +24,7 @@ module fpga_regs
   output reg         video_in_select       // 0 = parallel, 1 = serial
 );
 
-
+assign have_msg_bus = 10'b0;
 
 always@(posedge clk or negedge n_rst)
   if(!n_rst)

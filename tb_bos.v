@@ -3,7 +3,7 @@
 
 module tb_bos();
 
-//reg  fpga_clk_100;
+reg  fpga_clk_100;
 reg  fpga_clk_48;
 reg  n_rst;
 
@@ -28,7 +28,7 @@ wire adc_sclk_pwr;
 wire adc_din_pwr;
 reg  adc_dout_pwr;
 wire adc_cs_pwr_n;
-/*
+
 wire adc_sclk;
 wire adc_din;
 reg  adc_dout;
@@ -57,7 +57,7 @@ wire sl_fpga;
 wire sdatai_fpga;
 reg  sdatao_fpga;
 wire sck_fpga;
-*/
+
 // debug
 wire [7:0] my_master_data;
 wire [1*`N_SRC-1:0] my_valid_bus;
@@ -65,13 +65,14 @@ wire [7:0] my_rx_data;
 wire my_rx_valid;
 wire [7:0] my_tx_data;
 wire my_tx_valid;
+wire [1*`N_SRC-1:0] my_have_msg_bus;
 
 // tri-state                       
-//assign dds_sdio = treg_dds_sdio;
+assign dds_sdio = treg_dds_sdio;
 
 bos i1
 (
-//  .fpga_clk_100       (fpga_clk_100),
+  .fpga_clk_100       (fpga_clk_100),
   .fpga_clk_48        (fpga_clk_48),
   .n_rst              (n_rst),
 
@@ -96,7 +97,7 @@ bos i1
   .adc_din_pwr        (adc_din_pwr),
   .adc_dout_pwr       (adc_dout_pwr),
   .adc_cs_pwr_n       (adc_cs_pwr_n),
-  /*
+  
   .adc_sclk           (adc_sclk),
   .adc_din            (adc_din),
   .adc_dout           (adc_dout),
@@ -123,14 +124,15 @@ bos i1
   .sl_fpga            (sl_fpga),
   .sdatai_fpga        (sdatai_fpga),
   .sdatao_fpga        (sdatao_fpga),
-  .sck_fpga           (sck_fpga)
-  */
+  .sck_fpga           (sck_fpga),
+  
   .my_rx_data         (my_rx_data),
   .my_rx_valid        (my_rx_valid),
   .my_master_data     (my_master_data),
   .my_valid_bus       (my_valid_bus),
   .my_tx_data         (my_tx_data),
-  .my_tx_valid        (my_tx_valid)
+  .my_tx_valid        (my_tx_valid),
+  .my_have_msg_bus    (my_have_msg_bus)
 );
 
 
@@ -157,13 +159,13 @@ always@(posedge dac_sclk)
 
 initial
   begin
-  //adc_dout = 0;
+  adc_dout = 0;
   adc_dout_pwr = 0;
   dac_rdy = 1;
   dac_sdo = 0;
-  //treg_dds_sdio = 1'bz;
-  //fpga_clk_100 = 0;
-  //sdatao_fpga = 0;
+  treg_dds_sdio = 1'bz;
+  fpga_clk_100 = 0;
+  sdatao_fpga = 0;
   
   n_rst = 0;
   fpga_clk_48 = 0;
@@ -186,6 +188,14 @@ initial
   send_to_rx(8'h05);
   send_to_rx(8'h06);
   send_to_rx(8'h15);  // crc
+  /*
+  send_to_rx(8'hDD);  // prefix
+  send_to_rx(8'h01);  // address of ast
+  send_to_rx(8'd17);  // address of dest
+  send_to_rx(8'h01);  // len
+  send_to_rx(8'h01);
+  send_to_rx(8'h01);  // crc
+  */
   
   #1500000
   

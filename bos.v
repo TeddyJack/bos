@@ -102,7 +102,8 @@ output        my_rx_valid,
 output [7:0]  my_master_data,
 output [1*`N_SRC-1:0] my_valid_bus,
 output [7:0]  my_tx_data,
-output        my_tx_valid
+output        my_tx_valid,
+output [1*`N_SRC-1:0] my_have_msg_bus
 );
 
 
@@ -178,7 +179,7 @@ if_spi #(.CPOL(1)) adc_1
   .len      (len_bus[8*4+:8])
 );
 
-/*
+
 // addresses 5-6
 if_spi_multi #(.N_SLAVES(2), .CPOL(1)) adcs
 (
@@ -234,6 +235,8 @@ if_spi #(.CPOL(0)) spi_bos
 );
 
 
+assign have_msg_bus[10:9] = 2'b0;
+
 // addresses 11-20
 fpga_regs fpga_regs
 (
@@ -258,7 +261,7 @@ fpga_regs fpga_regs
   .functional         (functional),         
   .video_in_select    ()
 );
-*/
+
 
 
 cmd_decoder cmd_decoder
@@ -305,7 +308,7 @@ uart uart
   .rxd                (rx),
   .txd                (tx),
   // Configuration
-  .prescale           (PRESCALE)
+  .prescale           (PRESCALE[15:0])
 );
 
 
@@ -317,5 +320,6 @@ assign my_master_data = master_data;
 assign my_valid_bus = valid_bus;
 assign my_tx_data = tx_data;
 assign my_tx_valid = tx_valid;
+assign my_have_msg_bus = have_msg_bus;
 
 endmodule
