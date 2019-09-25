@@ -180,14 +180,24 @@ initial
   send_to_rx(8'hDD);  // prefix
   send_to_rx(8'h01);  // address of ast
   send_to_rx(8'd00);  // address of dest
-  send_to_rx(8'h06);  // len
+  send_to_rx(8'd16);  // len
   send_to_rx(8'h01);
   send_to_rx(8'h02);
   send_to_rx(8'h03);
   send_to_rx(8'h04);
   send_to_rx(8'h05);
   send_to_rx(8'h06);
-  send_to_rx(8'h15);  // crc
+  send_to_rx(8'h07);
+  send_to_rx(8'h08);
+  send_to_rx(8'h09);
+  send_to_rx(8'h0A);
+  send_to_rx(8'h0B);
+  send_to_rx(8'h0C);
+  send_to_rx(8'h0D);
+  send_to_rx(8'h0E);
+  send_to_rx(8'h0F);
+  send_to_rx(8'h10);
+  send_to_rx(8'h88);  // crc
   /*
   send_to_rx(8'hDD);  // prefix
   send_to_rx(8'h01);  // address of ast

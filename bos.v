@@ -235,19 +235,17 @@ if_spi #(.CPOL(0)) spi_bos
 );
 
 
-assign have_msg_bus[10:9] = 2'b0;
-
-// addresses 11-20
+// addresses 9-18
 fpga_regs fpga_regs
 (
   .n_rst              (n_rst),
   .clk                (fpga_clk_48),
   .master_data        (master_data),
-  .valid_bus          (valid_bus[20:11]),
-  .rdreq_bus          (rdreq_bus[20:11]),
-  .have_msg_bus       (have_msg_bus[20:11]),
-  .slave_data_bus     (slave_data_bus[8*11+:8*10]),
-  .len_bus            (len_bus[8*11+:8*10]),
+  .valid_bus          (valid_bus[18:9]),
+  .rdreq_bus          (rdreq_bus[18:9]),
+  .have_msg_bus       (have_msg_bus[18:9]),
+  .slave_data_bus     (slave_data_bus[8*9+:8*10]),
+  .len_bus            (len_bus[8*9+:8*10]),
   
   .dac_gain           (dac_gain),           
   .dac_switch_out_fpga(dac_switch_out_fpga),
