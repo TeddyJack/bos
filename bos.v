@@ -4,7 +4,7 @@ module bos(
 //// main
 input fpga_clk_100,   // для периферии и sys clk
 input fpga_clk_48,
-//input fpga_clk_dac, // clk from dds
+input fpga_clk_dac, // clk from dds
 //input sbis_power_on,  // flag that sbis is ok
 
 //// RS-485
@@ -68,14 +68,14 @@ output        functional,           // off/on level translators
 
 //// DAC
 //output [13:0] dac_d,
-//output        dac_clk_ext,    // assign fpga_clk_dac
+output        dac_clk_ext,    // assign fpga_clk_dac through PLL
 
 //// SBIS BOS
 //input  [11:0] q_fpga,       // parallel video data from sbis bos
 //input         dataclk_fpga,
 //
 //output        rst_fpga,     // rst of sbis
-//output        clk_fpga,     // сюда подать 10 MHz из clk_dds
+output        clk_fpga,     // сюда подать 10 MHz из clk_dds
 //output        stby_fpga,    // вход режима простоя
 //
 //output        shp_fpga,     // вход тактов обработки
@@ -258,6 +258,21 @@ fpga_regs fpga_regs
   .off_vdigital_fpga  (off_vdigital_fpga),  
   .functional         (functional),         
   .video_in_select    ()
+);
+
+
+pll_dac pll_dac
+(
+  .inclk0 (fpga_clk_dac),
+  .c0     (dac_clk_ext),      // 4 or 10 MHz
+  .locked ()
+);
+
+pll_dac pll_bos
+(
+  .inclk0 (fpga_clk_100),
+  .c0     (clk_fpga),      // 4 or 10 MHz
+  .locked ()
 );
 
 

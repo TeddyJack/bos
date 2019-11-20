@@ -6,7 +6,8 @@
 module spi_master_byte
 #(
   parameter CLK_DIV_EVEN = 8,
-  parameter CPOL = 0
+  parameter CPOL = 0,
+  parameter [7:0] BYTES_PER_FRAME = 2
 )
 (
   output reg sclk,
@@ -34,6 +35,7 @@ reg       ena;
 reg [7:0] cnt_ena;
 reg       state;
 reg [2:0] cnt_bit;
+reg [7:0] byte_cnt;
 
 localparam IDLE  = 1'b0;
 localparam SHIFT = 1'b1;
@@ -87,6 +89,7 @@ always@(posedge clk or negedge n_rst)
     begin
     state <= IDLE;
     n_cs <= 1;
+    byte_cnt <= 0;
     end
   else if(ena)
     case(state)
@@ -100,10 +103,16 @@ always@(posedge clk or negedge n_rst)
       end
     SHIFT:
       begin
-      if((&cnt_bit) & empty)
+      if(&cnt_bit)
         begin
-        n_cs <= 1;
-        state <= IDLE;
+        if(empty | ((|BYTES_PER_FRAME) & (byte_cnt == BYTES_PER_FRAME-8'd1)))
+          begin
+          n_cs <= 1;
+          byte_cnt <= 0;
+          state <= IDLE;
+          end
+        else
+          byte_cnt <= byte_cnt + 1'b1;
         end
       end
     default:
