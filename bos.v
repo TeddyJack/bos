@@ -56,44 +56,44 @@ output        off_vdigital_fpga,    // off_on v_digital
 output        functional,           // off/on level translators
 
 //// RAM
-//output [12:0] sdram_a,
-//output [1:0]  sdram_ba,     // bank address
-//inout  [15:0] sdram_dq,     // data i/o
-//output        sdram_clk,
-//output        sdram_cke,    // clock enable
-//output        sdram_we_n,   // write_enable
-//output        sdram_cas_n,  // column address strobe command
-//output        sdram_ras_n,  // row address strobe command
-//output        sdram_cs_n,   // chip select
+output [12:0] sdram_a,
+output [1:0]  sdram_ba,     // bank address
+inout  [15:0] sdram_dq,     // data i/o
+output        sdram_clk,
+output        sdram_cke,    // clock enable
+output        sdram_we_n,   // write_enable
+output        sdram_cas_n,  // column address strobe command
+output        sdram_ras_n,  // row address strobe command
+output        sdram_cs_n,   // chip select
 
 //// DAC
-//output [13:0] dac_d,
+output [13:0] dac_d,
 output        dac_clk_ext,    // assign fpga_clk_dac through PLL
 
 //// SBIS BOS
-//input  [11:0] q_fpga,       // parallel video data from sbis bos
-//input         dataclk_fpga,
+input  [11:0] q_fpga,       // parallel video data from sbis bos
+input         dataclk_fpga,
 //
 //output        rst_fpga,     // rst of sbis
 output        clk_fpga,     // сюда подать 10 MHz из clk_dds
 //output        stby_fpga,    // вход режима простоя
 //
-//output        shp_fpga,     // вход тактов обработки
-//output        hd_fpga,      // вход управления горизонтальной развёрткой
-//output        pblk_fpga,    // вход импульса гашения
-//output        vd_fpga,      // вход управления вертикальной развёрткой
-//output        clpdm_fpga,   // вход импульса привязки на входе
-//output        shd_fpga,     // вход тактов уровня данных
-//output        clpob_fpga,   // вход импульса привязки на выходе
+output        shp_fpga,     // вход тактов обработки
+output        hd_fpga,      // вход управления горизонтальной развёрткой
+output        pblk_fpga,    // вход импульса гашения
+output        vd_fpga,      // вход управления вертикальной развёрткой
+output        clpdm_fpga,   // вход импульса привязки на входе
+output        shd_fpga,     // вход тактов уровня данных
+output        clpob_fpga,   // вход импульса привязки на выходе
 //
 output        sl_fpga,      // SPI control - cs
 output        sdatai_fpga,  // SPI control - mosi
 input         sdatao_fpga,  // SPI control - miso
 output        sck_fpga,     // SPI control - sclk
 //
-//output        slv_fpga,     // SPI video - cs      
-//output        sckv_fpga,    // SPI video - sclk    // 48 MHz
-//input         sdatav_fpga   // SPI video - miso
+output        slv_fpga,     // SPI video - cs      
+output        sckv_fpga,    // SPI video - sclk    // 48 MHz
+input         sdatav_fpga,   // SPI video - miso
 
 //// Debug
 input         n_rst,
@@ -123,8 +123,10 @@ wire [8*`N_SRC-1:0] slave_data_bus;
 wire [8*`N_SRC-1:0] len_bus;
 wire [1*`N_SRC-1:0] rdreq_bus;
 
+wire video_in_sel;
 
-// address 0
+
+// address 0x00
 if_spi #(.CPOL(0)) potentiometer_1
 (
   .n_rst    (n_rst),
@@ -143,7 +145,7 @@ if_spi #(.CPOL(0)) potentiometer_1
 assign dac_rst_n = 1'b1; // no hardware reset
 
 
-// addresses 1-3
+// addresses 0x01-0x03
 if_spi_multi #(.N_SLAVES(3), .CPOL(0)) potentiometers
 (
   .n_rst       (n_rst),
@@ -162,7 +164,7 @@ if_spi_multi #(.N_SLAVES(3), .CPOL(0)) potentiometers
 assign rst_power_n = 1'b1;
 
 
-// address 4
+// address 0x04
 if_spi #(.CPOL(1)) adc_1
 (
   .n_rst    (n_rst),
@@ -180,7 +182,7 @@ if_spi #(.CPOL(1)) adc_1
 );
 
 
-// addresses 5-6
+// addresses 0x05-0x06
 if_spi_multi #(.N_SLAVES(2), .CPOL(1)) adcs
 (
   .n_rst       (n_rst),
@@ -198,7 +200,7 @@ if_spi_multi #(.N_SLAVES(2), .CPOL(1)) adcs
 );
 
 
-// address 7
+// address 0x07
 if_spi_9952 spi_dds
 (
   .n_rst    (n_rst),
@@ -217,7 +219,7 @@ if_spi_9952 spi_dds
 assign dds_rst = 0;
 
 
-// address 8
+// address 0x08
 if_spi #(.CPOL(0)) spi_bos
 (
   .n_rst    (n_rst),
@@ -235,7 +237,7 @@ if_spi #(.CPOL(0)) spi_bos
 );
 
 
-// addresses 9-18
+// addresses 0x09-0x12
 fpga_regs fpga_regs
 (
   .n_rst              (n_rst),
@@ -247,32 +249,17 @@ fpga_regs fpga_regs
   .slave_data_bus     (slave_data_bus[8*9+:8*10]),
   .len_bus            (len_bus[8*9+:8*10]),
   
-  .dac_gain           (dac_gain),           
+  .a                  (a),
+  .load_pr_3v7        (load_pr_3v7),
+  .load_pdr           (load_pdr),
+  .dac_gain           (dac_gain),
   .dac_switch_out_fpga(dac_switch_out_fpga),
-  .dac_ena_out_fpga   (dac_ena_out_fpga),   
-  .a                  (a),                  
-  .load_pr_3v7        (load_pr_3v7),        
-  .load_pdr           (load_pdr),           
+  .dac_ena_out_fpga   (dac_ena_out_fpga),
   .off_pr_digital_fpga(off_pr_digital_fpga),
-  .off_vcore_fpga     (off_vcore_fpga),     
-  .off_vdigital_fpga  (off_vdigital_fpga),  
-  .functional         (functional),         
-  .video_in_select    ()
-);
-
-
-pll_dac pll_dac
-(
-  .inclk0 (fpga_clk_dac),
-  .c0     (dac_clk_ext),      // 4 or 10 MHz
-  .locked ()
-);
-
-pll_dac pll_bos
-(
-  .inclk0 (fpga_clk_100),
-  .c0     (clk_fpga),      // 4 or 10 MHz
-  .locked ()
+  .functional         (functional),   
+  .off_vcore_fpga     (off_vcore_fpga),
+  .off_vdigital_fpga  (off_vdigital_fpga),
+  .video_in_select    (video_in_sel)
 );
 
 
@@ -324,6 +311,56 @@ uart uart
   .prescale           (PRESCALE[15:0])
 );
 
+ram_control ram_control
+(
+  // internal and system
+  .n_rst        (n_rst),
+  .sys_clk      (fpga_clk_48),
+  .clk_for_dac  (),
+  .data_from_pc (master_data),
+  .ctrl_ena     (),
+  .data_ena     (),
+  // connect with RAM
+  .sdram_a      (sdram_a),
+  .sdram_ba     (sdram_ba),     // bank address
+  .sdram_dq     (sdram_dq),     // data i/o
+  .sdram_clk    (sdram_clk),
+  .sdram_cke    (sdram_cke),    // clock enable
+  .sdram_we_n   (sdram_we_n),   // write_enable
+  .sdram_cas_n  (sdram_cas_n),  // column address strobe command
+  .sdram_ras_n  (sdram_ras_n),  // row address strobe command
+  .sdram_cs_n   (sdram_cs_n),   // chip select
+  // connect with DAC
+  .dac_d        (dac_d),
+  // SBIS BOS - signals related with analog video signal
+  .shp_fpga     (shp_fpga),     // вход тактов обработки
+  .hd_fpga      (hd_fpga),      // вход управления горизонтальной развёрткой
+  .pblk_fpga    (pblk_fpga),    // вход импульса гашения
+  .vd_fpga      (vd_fpga),      // вход управления вертикальной развёрткой
+  .clpdm_fpga   (clpdm_fpga),   // вход импульса привязки на входе
+  .shd_fpga     (shd_fpga),     // вход тактов уровня данных
+  .clpob_fpga   (clpob_fpga),   // вход импульса привязки на выходе
+  // SBIS BOS - parallel output
+  .q_fpga       (q_fpga),       // parallel video data from sbis bos
+  .dataclk_fpga (dataclk_fpga),
+  // SBIS BOS - serial output
+  .slv_fpga     (slv_fpga),     // SPI video - cs      
+  .sckv_fpga    (sckv_fpga),    // SPI video - sclk    // 48 MHz
+  .sdatav_fpga  (sdatav_fpga)   // SPI video - miso
+);
+
+// address 0x13
+keep_alive keep_alive
+(
+  .n_rst    (n_rst),
+  .clk      (fpga_clk_48),
+  .data     (master_data),
+  .ena      (valid_bus[19]),
+  .have_msg (have_msg_bus[19]),
+  .rdreq    (rdreq_bus[19]),
+  .data_out (slave_data_bus[8*19+:8]),
+  .len      (len_bus[8*19+:8])
+);
 
 
 // debug assigns
