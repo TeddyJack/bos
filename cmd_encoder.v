@@ -29,11 +29,10 @@ wire [7:0] current_data = data_bus[8*current_source+:8];
 reg [2:0] state;
 localparam [2:0] IDLE         = 0;
 localparam [2:0] SEND_PREFIX  = 1;
-localparam [2:0] SEND_AST     = 2;
-localparam [2:0] SEND_SOURCE  = 3;
-localparam [2:0] SEND_LEN     = 4;
-localparam [2:0] SEND_DATA    = 5;
-localparam [2:0] SEND_CRC     = 6;
+localparam [2:0] SEND_SOURCE  = 2;
+localparam [2:0] SEND_LEN     = 3;
+localparam [2:0] SEND_DATA    = 4;
+localparam [2:0] SEND_CRC     = 5;
 
 reg [7:0] cnt;
 reg [7:0] crc;
@@ -77,11 +76,6 @@ else
       tx_data <= `PREFIX;
       end
     SEND_PREFIX:
-      begin
-      state <= SEND_AST;
-      tx_data <= `ADDR_AST;
-      end
-    SEND_AST:
       begin
       state <= SEND_SOURCE;
       tx_data <= current_source;

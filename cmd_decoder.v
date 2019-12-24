@@ -48,13 +48,12 @@ reg       valid;
 assign valid_bus = valid << dest;
 
 reg [2:0] state;
-localparam READ_PREFIX  = 0;
-localparam READ_AST     = 1;
-localparam READ_DEST    = 2;
-localparam READ_LEN     = 3;
-localparam READ_DATA    = 4;
-localparam READ_CRC     = 5;
-localparam FORWARD_DATA = 6;
+localparam [2:0] READ_PREFIX  = 0;
+localparam [2:0] READ_DEST    = 1;
+localparam [2:0] READ_LEN     = 2;
+localparam [2:0] READ_DATA    = 3;
+localparam [2:0] READ_CRC     = 4;
+localparam [2:0] FORWARD_DATA = 5;
 
 wire empty;
 wire rdreq = !empty & (state == FORWARD_DATA);
@@ -88,13 +87,8 @@ always@(posedge clk or negedge n_rst or posedge rst_timeout)
           begin
           clear <= 0;
           if(rx_data == `PREFIX)
-            state <= READ_AST;
-          end
-        READ_AST:
-          if(rx_data == `ADDR_AST)
             state <= READ_DEST;
-          else
-            state <= READ_PREFIX;
+          end
         READ_DEST:
           begin
           dest <= rx_data;
@@ -119,15 +113,15 @@ always@(posedge clk or negedge n_rst or posedge rst_timeout)
         READ_CRC:
           begin
           crc_calcked <= 0;
-          if(crc_calcked == rx_data)
+          //if(crc_calcked == rx_data)    // ignore crc at debugging
             begin
             state <= FORWARD_DATA;
             end
-          else
-            begin
-            state <= READ_PREFIX;
-            clear <= 1;
-            end
+          //else
+          //  begin
+          //  state <= READ_PREFIX;
+          //  clear <= 1;
+          //  end
           end
         default:
           state <= READ_PREFIX;   // maybe add some actions here

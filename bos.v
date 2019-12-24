@@ -2,9 +2,9 @@
 
 module bos(
 //// main
-input fpga_clk_100,   // для периферии и sys clk
-input fpga_clk_48,
-input fpga_clk_dac, // clk from dds
+//input fpga_clk_100,
+input fpga_clk_48,    // used in tb
+//input fpga_clk_dac, // clk from dds, disabled for debugging
 //input sbis_power_on,  // flag that sbis is ok
 
 //// RS-485
@@ -16,8 +16,8 @@ output  dac_din,
 output  dac_sclk,
 output  dac_sync_n,
 input   dac_sdo,
-input   dac_rdy,                // indicates completion of read/write
-output  dac_rst_n,              // reset resistor value to midscale
+input   dac_rdy,              // indicates completion of read/write
+output  dac_rst_n,            // reset resistor value to midscale
 output  din_power,            // pcb power, D1 D2 D13
 output  sclk_power,           // pcb power, D1 D2 D13
 output  rst_power_n,          // pcb power, D1 D2 D13
@@ -56,44 +56,44 @@ output        off_vdigital_fpga,    // off_on v_digital
 output        functional,           // off/on level translators
 
 //// RAM
-output [12:0] sdram_a,
-output [1:0]  sdram_ba,     // bank address
-inout  [15:0] sdram_dq,     // data i/o
-output        sdram_clk,
-output        sdram_cke,    // clock enable
-output        sdram_we_n,   // write_enable
-output        sdram_cas_n,  // column address strobe command
-output        sdram_ras_n,  // row address strobe command
-output        sdram_cs_n,   // chip select
+//output [12:0] sdram_a,
+//output [1:0]  sdram_ba,     // bank address
+//inout  [15:0] sdram_dq,     // data i/o
+//output        sdram_clk,
+//output        sdram_cke,    // clock enable
+//output        sdram_we_n,   // write_enable
+//output        sdram_cas_n,  // column address strobe command
+//output        sdram_ras_n,  // row address strobe command
+//output        sdram_cs_n,   // chip select
 
 //// DAC
 output [13:0] dac_d,
-output        dac_clk_ext,    // assign fpga_clk_dac through PLL
+output        dac_clk_ext,    // probably should be inverted fpga_clk_dac
 
 //// SBIS BOS
-input  [11:0] q_fpga,       // parallel video data from sbis bos
 input         dataclk_fpga,
+input  [11:0] q_fpga,       // parallel video data from sbis bos
 //
 //output        rst_fpga,     // rst of sbis
-output        clk_fpga,     // сюда подать 10 MHz из clk_dds
+output        clk_fpga,     // sampling clock for sbis
 //output        stby_fpga,    // вход режима простоя
 //
-output        shp_fpga,     // вход тактов обработки
-output        hd_fpga,      // вход управления горизонтальной развёрткой
-output        pblk_fpga,    // вход импульса гашения
-output        vd_fpga,      // вход управления вертикальной развёрткой
-output        clpdm_fpga,   // вход импульса привязки на входе
-output        shd_fpga,     // вход тактов уровня данных
-output        clpob_fpga,   // вход импульса привязки на выходе
+output        shp_fpga,     // sampling clock for reference level
+output        shd_fpga,     // sampling clock for data level
+output        hd_fpga,      // horiz drive (used for color steering control)
+output        vd_fpga,      // vert drive (used for color steering control)
+output        clpdm_fpga,   // input clamp clock
+output        clpob_fpga,   // black level clamp clock
+output        pblk_fpga,    // pre blanking clock
 //
 output        sl_fpga,      // SPI control - cs
 output        sdatai_fpga,  // SPI control - mosi
 input         sdatao_fpga,  // SPI control - miso
 output        sck_fpga,     // SPI control - sclk
 //
-output        slv_fpga,     // SPI video - cs      
-output        sckv_fpga,    // SPI video - sclk    // 48 MHz
-input         sdatav_fpga,   // SPI video - miso
+//output        slv_fpga,     // SPI video - cs      
+//output        sckv_fpga,    // SPI video - sclk    // 52 MHz
+//input         sdatav_fpga,   // SPI video - miso
 
 //// Debug
 input         n_rst,
@@ -103,14 +103,25 @@ output [7:0]  my_master_data,
 output [1*`N_SRC-1:0] my_valid_bus,
 output [7:0]  my_tx_data,
 output        my_tx_valid,
-output [1*`N_SRC-1:0] my_have_msg_bus
+output [1*`N_SRC-1:0] my_have_msg_bus,
+
+output [1:0]  my_state,
+output my_m_wrreq,
+output [7:0] my_m_used,
+output my_m_rdreq,
+output [15:0] my_m_q,
+output [2:0] my_counter
 );
 
+
+wire sys_clk; assign sys_clk = fpga_clk_48;
+wire fpga_clk_dac; assign fpga_clk_dac = sys_clk; // assign for debugging
+assign dac_clk_ext = !fpga_clk_dac;
 
 wire [7:0]        master_data;
 wire [`N_SRC-1:0] valid_bus;
 
-localparam PRESCALE = 50000000 / (115200 * 8);	// = fclk / (baud * 8)
+localparam PRESCALE = `SYS_CLK * 10000 / (1152 * 8);	// = fclk / (baud * 8)
 wire [7:0]  rx_data;
 wire        rx_valid;
 wire        tx_ready;
@@ -125,12 +136,20 @@ wire [1*`N_SRC-1:0] rdreq_bus;
 
 wire video_in_sel;
 
+//wire n_rst;
+//pll_main pll_main
+//(
+//  .inclk0 (fpga_clk_100),
+//  .c0     (sys_clk),
+//  .locked ()
+//);
+
 
 // address 0x00
 if_spi #(.CPOL(0)) potentiometer_1
 (
   .n_rst    (n_rst),
-  .clk      (fpga_clk_48),
+  .clk      (sys_clk),
   .n_cs     (dac_sync_n),
   .sclk     (dac_sclk),
   .mosi     (dac_din),
@@ -149,7 +168,7 @@ assign dac_rst_n = 1'b1; // no hardware reset
 if_spi_multi #(.N_SLAVES(3), .CPOL(0)) potentiometers
 (
   .n_rst       (n_rst),
-  .clk         (fpga_clk_48),
+  .clk         (sys_clk),
   .sclk        (sclk_power),
   .mosi        (din_power),
   .miso        (),
@@ -168,7 +187,7 @@ assign rst_power_n = 1'b1;
 if_spi #(.CPOL(1)) adc_1
 (
   .n_rst    (n_rst),
-  .clk      (fpga_clk_48),
+  .clk      (sys_clk),
   .n_cs     (adc_cs_pwr_n),
   .sclk     (adc_sclk_pwr),
   .mosi     (adc_din_pwr),
@@ -186,7 +205,7 @@ if_spi #(.CPOL(1)) adc_1
 if_spi_multi #(.N_SLAVES(2), .CPOL(1)) adcs
 (
   .n_rst       (n_rst),
-  .clk         (fpga_clk_48),
+  .clk         (sys_clk),
   .sclk        (adc_sclk),
   .mosi        (adc_din),
   .miso        (adc_dout),
@@ -204,7 +223,7 @@ if_spi_multi #(.N_SLAVES(2), .CPOL(1)) adcs
 if_spi_9952 spi_dds
 (
   .n_rst    (n_rst),
-  .clk      (fpga_clk_48),
+  .clk      (sys_clk),
   .n_cs     (dds_cs_n),
   .sclk     (dds_sclk),
   .sdio     (dds_sdio),
@@ -223,7 +242,7 @@ assign dds_rst = 0;
 if_spi #(.CPOL(0)) spi_bos
 (
   .n_rst    (n_rst),
-  .clk      (fpga_clk_48),
+  .clk      (sys_clk),
   .n_cs     (sl_fpga),
   .sclk     (sck_fpga),
   .mosi     (sdatai_fpga),
@@ -237,17 +256,17 @@ if_spi #(.CPOL(0)) spi_bos
 );
 
 
-// addresses 0x09-0x12
+// addresses 0x09-0x11
 fpga_regs fpga_regs
 (
   .n_rst              (n_rst),
-  .clk                (fpga_clk_48),
+  .clk                (sys_clk),
   .master_data        (master_data),
-  .valid_bus          (valid_bus[18:9]),
-  .rdreq_bus          (rdreq_bus[18:9]),
-  .have_msg_bus       (have_msg_bus[18:9]),
-  .slave_data_bus     (slave_data_bus[8*9+:8*10]),
-  .len_bus            (len_bus[8*9+:8*10]),
+  .valid_bus          (valid_bus[17:9]),
+  .rdreq_bus          (rdreq_bus[17:9]),
+  .have_msg_bus       (have_msg_bus[17:9]),
+  .slave_data_bus     (slave_data_bus[8*9+:8*9]), // (8 * lowest address) +: (8 * num of addresses)
+  .len_bus            (len_bus[8*9+:8*9]),
   
   .a                  (a),
   .load_pr_3v7        (load_pr_3v7),
@@ -258,8 +277,55 @@ fpga_regs fpga_regs
   .off_pr_digital_fpga(off_pr_digital_fpga),
   .functional         (functional),   
   .off_vcore_fpga     (off_vcore_fpga),
-  .off_vdigital_fpga  (off_vdigital_fpga),
-  .video_in_select    (video_in_sel)
+  .off_vdigital_fpga  (off_vdigital_fpga)
+);
+
+
+// addresses 0x12-0x15
+func_testing func_testing
+(
+  // internal and system
+  .n_rst          (n_rst),
+  .sys_clk        (sys_clk),
+  .dds_clk        (fpga_clk_dac),
+  .master_data    (master_data),
+  .valid_bus      (valid_bus[21:18]),
+  .rdreq_bus      (rdreq_bus[21:18]),
+  .have_msg_bus   (have_msg_bus[21:18]),
+  .video_in_select(video_in_sel),
+  // connect with DAC
+  .dac_d        (dac_d),
+  // SBIS BOS - signals related with analog video signal
+  .clk_fpga     (clk_fpga),
+  .shp_fpga     (shp_fpga),
+  .shd_fpga     (shd_fpga),
+  .hd_fpga      (hd_fpga),
+  .vd_fpga      (vd_fpga),
+  .clpdm_fpga   (clpdm_fpga),
+  .clpob_fpga   (clpob_fpga),
+  .pblk_fpga    (pblk_fpga),
+  // debug
+  .my_state     (my_state),
+  .my_m_wrreq   (my_m_wrreq),
+  .my_m_used    (my_m_used),
+  .my_m_rdreq   (my_m_rdreq),
+  .my_m_q       (my_m_q),
+  .my_counter   (my_counter)
+  
+);
+
+
+// address 0x16
+keep_alive keep_alive
+(
+  .n_rst    (n_rst),
+  .clk      (sys_clk),
+  .data     (master_data),
+  .ena      (valid_bus[22]),
+  .have_msg (have_msg_bus[22]),
+  .rdreq    (rdreq_bus[22]),
+  .data_out (slave_data_bus[8*22+:8]),
+  .len      (len_bus[8*22+:8])
 );
 
 
@@ -267,7 +333,7 @@ fpga_regs fpga_regs
 cmd_decoder cmd_decoder
 (
   .n_rst    (n_rst),
-  .clk      (fpga_clk_48),
+  .clk      (sys_clk),
   .rx_data  (rx_data),
   .rx_valid (rx_valid),
   .rx_ready (rx_ready),
@@ -280,7 +346,7 @@ cmd_decoder cmd_decoder
 cmd_encoder cmd_encoder
 (
   .n_rst        (n_rst),
-  .clk          (fpga_clk_48),
+  .clk          (sys_clk),
   .have_msg_bus (have_msg_bus),
   .data_bus     (slave_data_bus),
   .len_bus      (len_bus),
@@ -294,7 +360,7 @@ cmd_encoder cmd_encoder
 
 uart uart
 (
-  .clk                (fpga_clk_48),
+  .clk                (sys_clk),
   .rst                (!n_rst),
   // AXI input
   .input_axis_tdata   (tx_data),    // I make it
@@ -309,57 +375,6 @@ uart uart
   .txd                (tx),
   // Configuration
   .prescale           (PRESCALE[15:0])
-);
-
-ram_control ram_control
-(
-  // internal and system
-  .n_rst        (n_rst),
-  .sys_clk      (fpga_clk_48),
-  .clk_for_dac  (),
-  .data_from_pc (master_data),
-  .ctrl_ena     (),
-  .data_ena     (),
-  // connect with RAM
-  .sdram_a      (sdram_a),
-  .sdram_ba     (sdram_ba),     // bank address
-  .sdram_dq     (sdram_dq),     // data i/o
-  .sdram_clk    (sdram_clk),
-  .sdram_cke    (sdram_cke),    // clock enable
-  .sdram_we_n   (sdram_we_n),   // write_enable
-  .sdram_cas_n  (sdram_cas_n),  // column address strobe command
-  .sdram_ras_n  (sdram_ras_n),  // row address strobe command
-  .sdram_cs_n   (sdram_cs_n),   // chip select
-  // connect with DAC
-  .dac_d        (dac_d),
-  // SBIS BOS - signals related with analog video signal
-  .shp_fpga     (shp_fpga),     // вход тактов обработки
-  .hd_fpga      (hd_fpga),      // вход управления горизонтальной развёрткой
-  .pblk_fpga    (pblk_fpga),    // вход импульса гашения
-  .vd_fpga      (vd_fpga),      // вход управления вертикальной развёрткой
-  .clpdm_fpga   (clpdm_fpga),   // вход импульса привязки на входе
-  .shd_fpga     (shd_fpga),     // вход тактов уровня данных
-  .clpob_fpga   (clpob_fpga),   // вход импульса привязки на выходе
-  // SBIS BOS - parallel output
-  .q_fpga       (q_fpga),       // parallel video data from sbis bos
-  .dataclk_fpga (dataclk_fpga),
-  // SBIS BOS - serial output
-  .slv_fpga     (slv_fpga),     // SPI video - cs      
-  .sckv_fpga    (sckv_fpga),    // SPI video - sclk    // 48 MHz
-  .sdatav_fpga  (sdatav_fpga)   // SPI video - miso
-);
-
-// address 0x13
-keep_alive keep_alive
-(
-  .n_rst    (n_rst),
-  .clk      (fpga_clk_48),
-  .data     (master_data),
-  .ena      (valid_bus[19]),
-  .have_msg (have_msg_bus[19]),
-  .rdreq    (rdreq_bus[19]),
-  .data_out (slave_data_bus[8*19+:8]),
-  .len      (len_bus[8*19+:8])
 );
 
 
