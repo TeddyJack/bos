@@ -3,7 +3,7 @@
 module bos(
 //// main
 //input fpga_clk_100,
-input fpga_clk_48,    // used in tb
+input fpga_clk_48,    // used in tb as 32 MHz
 //input fpga_clk_dac, // clk from dds, disabled for debugging
 //input sbis_power_on,  // flag that sbis is ok
 
@@ -110,7 +110,8 @@ output my_m_wrreq,
 output [7:0] my_m_used,
 output my_m_rdreq,
 output [15:0] my_m_q,
-output [2:0] my_counter
+output [2:0] my_counter,
+output my_master_empty
 );
 
 
@@ -287,11 +288,11 @@ func_testing func_testing
   // internal and system
   .n_rst          (n_rst),
   .sys_clk        (sys_clk),
-  .dds_clk        (fpga_clk_dac),
+  .dds_clk        (dac_clk_ext),
   .master_data    (master_data),
-  .valid_bus      (valid_bus[21:18]),
-  .rdreq_bus      (rdreq_bus[21:18]),
-  .have_msg_bus   (have_msg_bus[21:18]),
+  .valid_bus      (valid_bus[22:18]),
+  .rdreq_bus      (rdreq_bus[22:18]),
+  .have_msg_bus   (have_msg_bus[22:18]),
   .video_in_select(video_in_sel),
   // connect with DAC
   .dac_d        (dac_d),
@@ -310,7 +311,8 @@ func_testing func_testing
   .my_m_used    (my_m_used),
   .my_m_rdreq   (my_m_rdreq),
   .my_m_q       (my_m_q),
-  .my_counter   (my_counter)
+  .my_counter   (my_counter),
+  .my_master_empty(my_master_empty)
   
 );
 
@@ -321,11 +323,11 @@ keep_alive keep_alive
   .n_rst    (n_rst),
   .clk      (sys_clk),
   .data     (master_data),
-  .ena      (valid_bus[22]),
-  .have_msg (have_msg_bus[22]),
-  .rdreq    (rdreq_bus[22]),
-  .data_out (slave_data_bus[8*22+:8]),
-  .len      (len_bus[8*22+:8])
+  .ena      (valid_bus[23]),
+  .have_msg (have_msg_bus[23]),
+  .rdreq    (rdreq_bus[23]),
+  .data_out (slave_data_bus[8*23+:8]),
+  .len      (len_bus[8*23+:8])
 );
 
 

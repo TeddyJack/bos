@@ -5,13 +5,13 @@ module func_testing
   input       sys_clk,
   input       dds_clk,
   input [7:0] master_data,
-  input [3:0] valid_bus,
-  input [3:0] rdreq_bus,
-  output [3:0] have_msg_bus,
-  output [7:0] slave_data,
-  output reg   video_in_select,
+  input [4:0] valid_bus,        // 4 = video samples
+  input [4:0] rdreq_bus,        // 3 = (start / stop) and (CCD mode / plain ADC mode)
+  output [4:0] have_msg_bus,    // 2 = black level value in CCD mode
+  output [7:0] slave_data,      // 1 = HD and VD
+  output reg   video_in_select, // 0 = parall or serial output
   // connect with DAC
-  output [13:0] dac_d,
+  output reg [13:0] dac_d,
   // SBIS BOS parall input
   input        dataclk_fpga,
   input [11:0] q_fpga,
@@ -31,90 +31,80 @@ module func_testing
   output [7:0] my_m_used,
   output my_m_rdreq,
   output [15:0] my_m_q,
-  output [2:0]  my_counter
+  output [2:0]  my_counter,
+  output my_master_empty
 );
 
-assign have_msg_bus[0] = 1'b0;
-assign have_msg_bus[1] = 1'b0;
-assign have_msg_bus[2] = 1'b0;
-
-reg [1:0] state;
-localparam [1:0] IDLE       = 2'h0;   // WR = write to RAM; RD = read from RAM
-localparam [1:0] WR_FROM_PC = 2'h1;
-localparam [1:0] RD_TO_DAC  = 2'h2;   // or WR_FROM_BOS
-localparam [1:0] RD_TO_PC   = 2'h3;
-wire slave_empty;
-assign have_msg_bus[3] = !slave_empty & (state == RD_TO_PC);
-
-wire ctrl_ena;
-assign ctrl_ena = valid_bus[2];
-wire samples_ena;
-assign samples_ena = valid_bus[3];
-
-reg [31:0] cnt_samples_pc;
-reg [28:0] n_samples_bos;
-wire [31:0] used;
-
-wire [15:0] master_q;
-wire master_empty;
-reg master_rdreq;
-
-reg [2:0] counter;
 
 
 
+reg [15:0] black_level;
 always@(posedge sys_clk or negedge n_rst)
   if(!n_rst)
     begin
     video_in_select <= 0;
     hd_fpga         <= 0;
     vd_fpga         <= 0;
+    black_level     <= 0;
     end
   else
     begin
-    if(valid_bus[0]) video_in_select  <= master_data[0];
-    if(valid_bus[1]) begin
-                     hd_fpga          <= master_data[1];
-                     vd_fpga          <= master_data[0];
-                     end
+    if(valid_bus[0])  video_in_select  <= master_data[0];
+    if(valid_bus[1])  begin
+                      hd_fpga          <= master_data[1];
+                      vd_fpga          <= master_data[0];
+                      end
+    if(valid_bus[2])  begin
+                      black_level[7:0] <= black_level[15:8];  // if lsb comes first
+                      black_level[15:8] <= master_data;
+                      end
     end
 
 
+
+
+wire ctrl_ena; assign ctrl_ena = valid_bus[3];
+wire samples_ena; assign samples_ena = valid_bus[4];
+reg ccd_or_plain;
+wire [15:0] master_q;
+wire master_empty;
+wire slave_empty;
+reg [1:0] state;
+localparam [1:0] IDLE       = 2'h0;   // WR = write to RAM; RD = read from RAM
+localparam [1:0] WR_FROM_PC = 2'h1;
+localparam [1:0] RD_TO_DAC  = 2'h2;   // or WR_FROM_BOS
+localparam [1:0] RD_TO_PC   = 2'h3;
+reg [2:0] inner_cnt;  // counts from 0 to 7
 
 always@(posedge sys_clk or negedge n_rst)
   if(!n_rst)
     begin
     state <= IDLE;
-    cnt_samples_pc <= 0;
-    counter <= 0;
+    ccd_or_plain <= 0;
     end
   else
     case(state)
     IDLE:
       begin
-      if(ctrl_ena & (master_data == 8'hAA))    // make sure
+      if(ctrl_ena & (master_data[7:4] == 4'hA))    // start
+        begin
         state <= WR_FROM_PC;
+        ccd_or_plain <= master_data[0];
+        end
       end
     WR_FROM_PC:
       begin
-      if(ctrl_ena & (master_data == 8'hBB))    // make sure
-        begin
+      if(ctrl_ena & (master_data == 8'h55))    // stop
         state <= RD_TO_DAC;
-        n_samples_bos <= used[31:3];  // make sure used is measured in q-words, not d-words
-        end
       end
-    RD_TO_DAC:  // everything at once
+    RD_TO_DAC:
       begin
-      if(master_empty) // how many bytes has been sent to DAC, make sure
+      if(master_empty & (inner_cnt == 3'd0))
         state <= RD_TO_PC;
-      // master_rdreq should be generated somewhere here
       end
     RD_TO_PC:
       if(slave_empty)
-        begin
         state <= IDLE;
-        cnt_samples_pc <= 0;
-        end
     default:
       begin
       state <= IDLE;
@@ -122,18 +112,69 @@ always@(posedge sys_clk or negedge n_rst)
     endcase
 
 
+reg master_rdreq;
 
 always@(posedge sys_clk or negedge n_rst)
   if(!n_rst)
+    begin
+    inner_cnt <= 0;
     master_rdreq <= 0;
+    dac_d <= 0;
+    shp_fpga <= 0;
+    shd_fpga <= 0;
+    clk_fpga <= 0;
+    end
   else
     begin
-    master_rdreq <= !master_empty & (state == RD_TO_DAC);
+    if(state == RD_TO_DAC)
+      begin
+      inner_cnt <= inner_cnt + 1'b1;
+      master_rdreq <= (inner_cnt == 3'd7) & (!master_empty);
+      
+      if(inner_cnt == 3'd0)
+        clk_fpga <= 1;
+      else if(inner_cnt == 3'd4)
+        clk_fpga <= 0;
+        
+      if(ccd_or_plain)
+        dac_d <= master_q;
+      else
+        begin
+        if(inner_cnt == 3'd0)
+          dac_d <= black_level;
+        else if(inner_cnt == 3'd4)
+          dac_d <= master_q;
+        end
+      
+      if(inner_cnt == 3'd1)
+        shp_fpga <= 0;
+      else if(inner_cnt == 3'd3)
+        shp_fpga <= 1;
+      
+      if(inner_cnt == 3'd5)
+        shd_fpga <= 0;
+      else if(inner_cnt == 3'd7)
+        shd_fpga <= 1;
+
+      end
+    else
+      begin
+      inner_cnt <= 0;
+      shp_fpga <= 1;
+      shd_fpga <= 1;
+      clk_fpga <= 1;
+      end
+
     end
+
+
+
+
 
 
 wire master_wrreq;
 assign master_wrreq = samples_ena & (state == WR_FROM_PC);
+wire [7:0] used;
 
 fifo_trans_w #
 (
@@ -148,7 +189,7 @@ master_fifo
 	.data (master_data),
 	.rdclk(dds_clk),
 	.rdreq(master_rdreq),
-	.wrclk(sys_clk),
+	.wrclk(/*sys_clk*/dds_clk),
 	.wrreq(master_wrreq),
 	
   .q      (master_q),
@@ -182,32 +223,12 @@ slave_fifo
 );
 
 
-always@(posedge sys_clk or negedge !n_rst)
-  if(!n_rst)
-    begin
-    shp_fpga <= 1;
-    shd_fpga <= 1;
-    clk_fpga <= 0;
-    counter <= 0;
-    end
-  else
-    begin
-    if(master_rdreq)
-      begin
-      counter <= counter + 1'b1;
-      shp_fpga <= !(counter == 3'd1);
-      shd_fpga <= !(counter == 3'd5);
-      if(counter == 3'd7)
-        clk_fpga <= ~clk_fpga;
-      end
-    else
-      begin
-      shp_fpga <= 1;
-      shd_fpga <= 1;
-      clk_fpga <= 0;
-      counter <= 0;
-      end
-    end
+
+assign have_msg_bus[0] = 1'b0;
+assign have_msg_bus[1] = 1'b0;
+assign have_msg_bus[2] = 1'b0;
+assign have_msg_bus[3] = 1'b0;
+assign have_msg_bus[4] = !slave_empty & (state == RD_TO_PC);
 
 // DEBUG ASSIGNS
 assign my_state = state;
@@ -215,7 +236,8 @@ assign my_m_wrreq = master_wrreq;
 assign my_m_used = used;
 assign my_m_rdreq = master_rdreq;
 assign my_m_q = master_q;
-assign my_counter = counter;
+assign my_counter = inner_cnt;
+assign my_master_empty = master_empty;
 
 
 endmodule

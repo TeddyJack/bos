@@ -29,8 +29,10 @@ wire [2:0] my_counter;
 
 wire dac_clk_ext;
 wire clk_fpga;
+wire [13:0] dac_d;
 wire shp_fpga;
 wire shd_fpga;
+wire my_master_empty;
 
 bos i1
 (
@@ -60,7 +62,9 @@ bos i1
   .my_counter         (my_counter),
   .clk_fpga           (clk_fpga),
   .shp_fpga           (shp_fpga),
-  .shd_fpga           (shd_fpga)
+  .shd_fpga           (shd_fpga),
+  .dac_d              (dac_d),
+  .my_master_empty    (my_master_empty)
 );
 
 integer UART_T = 10000000 / 1152;  // in ns
@@ -108,51 +112,38 @@ initial
   
   send_to_rx(8'hDD);  // prefix
   send_to_rx(8'h14);  // address of dest
-  send_to_rx(8'h01);  // len
-  send_to_rx(8'hAA);  // start send
-  send_to_rx(8'hFF);  // crc
+  send_to_rx(8'd02);  // len
+  send_to_rx(8'h16); send_to_rx(8'h1D);  // black level lsb, msb
+  send_to_rx(8'hCC);  // crc
   
   #5000
   
   send_to_rx(8'hDD);  // prefix
   send_to_rx(8'h15);  // address of dest
-  send_to_rx(8'd40);  // len
-  
-  send_to_rx(8'h01); send_to_rx(8'h00);
-  send_to_rx(8'h03); send_to_rx(8'h02);
-  
-  send_to_rx(8'h05); send_to_rx(8'h04);
-  send_to_rx(8'h07); send_to_rx(8'h06);
-  send_to_rx(8'h09); send_to_rx(8'h08);
-  send_to_rx(8'h0B); send_to_rx(8'h0A);
-  
-  send_to_rx(8'h0D); send_to_rx(8'h0C);
-  send_to_rx(8'h0F); send_to_rx(8'h0E);
-  send_to_rx(8'h11); send_to_rx(8'h10);
-  send_to_rx(8'h13); send_to_rx(8'h12);
-  
-  send_to_rx(8'h15); send_to_rx(8'h14);
-  send_to_rx(8'h17); send_to_rx(8'h16);
-  send_to_rx(8'h19); send_to_rx(8'h18);
-  send_to_rx(8'h1B); send_to_rx(8'h1A);
-  
-  send_to_rx(8'h1D); send_to_rx(8'h1C);
-  send_to_rx(8'h1F); send_to_rx(8'h1E);
-  send_to_rx(8'h21); send_to_rx(8'h20);
-  send_to_rx(8'h23); send_to_rx(8'h22);
-  
-  send_to_rx(8'h25); send_to_rx(8'h24);
-  send_to_rx(8'h27); send_to_rx(8'h26);
-    
-  send_to_rx(8'hFF);  // crc
+  send_to_rx(8'h01);  // len
+  send_to_rx(8'hA0);  // start send, A0 = CCD mode, A1 = plain mode
+  send_to_rx(8'hCC);  // crc
   
   #5000
   
   send_to_rx(8'hDD);  // prefix
-  send_to_rx(8'h14);  // address of dest
-  send_to_rx(8'h01);  // len
-  send_to_rx(8'hBB);  // stop send
-  send_to_rx(8'hFF);  // crc
+  send_to_rx(8'h16);  // address of dest
+  send_to_rx(8'd12);  // len
+  send_to_rx(8'h64); send_to_rx(8'h13);
+  send_to_rx(8'h64); send_to_rx(8'h13);
+  send_to_rx(8'h64); send_to_rx(8'h13);
+  send_to_rx(8'h64); send_to_rx(8'h13);
+  send_to_rx(8'h64); send_to_rx(8'h13);
+  send_to_rx(8'h64); send_to_rx(8'h13);
+  send_to_rx(8'hCC);  // crc
+  
+  #5000
+  
+  send_to_rx(8'hDD);  // prefix
+  send_to_rx(8'h15);  // address of dest
+  send_to_rx(8'd01);  // len
+  send_to_rx(8'h55);  // stop send
+  send_to_rx(8'hCC);  // crc
 
   
   #1500000

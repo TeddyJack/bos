@@ -3,12 +3,12 @@ module fpga_regs
   input            n_rst,
   input            clk,
   input  [7:0]     master_data,
-  input  [9:0]     valid_bus,
+  input  [8:0]     valid_bus,
   
-  input  [9:0]     rdreq_bus,
-  output [9:0]     have_msg_bus,
-  output [9*8+7:0] slave_data_bus,
-  output [9*8+7:0] len_bus,
+  input  [8:0]     rdreq_bus,
+  output [8:0]     have_msg_bus,
+  output [8*8+7:0] slave_data_bus,
+  output [8*8+7:0] len_bus,
   
   output reg [3:0] a,                    // address on multiplexer to select Q[i]
   output reg       load_pr_3v7,          // connects mux output with 1.65 kOhm load
@@ -19,8 +19,7 @@ module fpga_regs
   output reg       off_pr_digital_fpga,  // off/on overvoltage to digital inputs of BOS
   output reg       functional,           // off/on level translators
   output reg       off_vcore_fpga,       // off/on v_core
-  output reg       off_vdigital_fpga,    // off_on v_digital
-  output reg       video_in_select       // 0 = parallel, 1 = serial
+  output reg       off_vdigital_fpga     // off_on v_digital
 );
 
 assign have_msg_bus = 10'b0;
@@ -40,7 +39,6 @@ always@(posedge clk or negedge n_rst)
     functional          <= 0;
     off_vcore_fpga      <= 0;
     off_vdigital_fpga   <= 0;
-    video_in_select     <= 0;
     end
   else
     begin
@@ -56,7 +54,6 @@ always@(posedge clk or negedge n_rst)
     if(valid_bus[6]) functional          <= master_data[0];
     if(valid_bus[7]) off_vcore_fpga      <= master_data[0];
     if(valid_bus[8]) off_vdigital_fpga   <= master_data[0];
-    if(valid_bus[9]) video_in_select     <= master_data[0];
     end
 
 
