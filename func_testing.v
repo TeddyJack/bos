@@ -8,8 +8,9 @@ module func_testing
   input [4:0] valid_bus,        // 4 = video samples
   input [4:0] rdreq_bus,        // 3 = (start / stop) and (CCD mode / plain ADC mode)
   output [4:0] have_msg_bus,    // 2 = black level value in CCD mode
-  output [7:0] slave_data,      // 1 = HD and VD
-  output reg   video_in_select, // 0 = parall or serial output
+  output [39:0] len_bus,        // 1 = HD and VD
+  output [39:0] slave_data_bus, // 0 = parall or serial output
+  output reg   video_in_select,
   // connect with DAC
   output reg [13:0] dac_d,
   // SBIS BOS parall input
@@ -21,7 +22,7 @@ module func_testing
   output reg  shd_fpga,
   output reg  hd_fpga,
   output reg  vd_fpga,
-  output      clpdm_fpga,
+  output reg  clpdm_fpga,
   output      clpob_fpga,
   output      pblk_fpga,
   
@@ -33,6 +34,9 @@ module func_testing
   output [15:0] my_m_q,
   output [2:0]  my_counter,
   output my_master_empty
+  
+  //output my_s_empty,
+  //output [8:0] my_s_used,
 );
 
 
@@ -137,13 +141,13 @@ always@(posedge sys_clk or negedge n_rst)
         clk_fpga <= 0;
         
       if(ccd_or_plain)
-        dac_d <= master_q;
+        dac_d <= master_q[13:0];
       else
         begin
         if(inner_cnt == 3'd0)
-          dac_d <= black_level;
+          dac_d <= black_level[13:0];
         else if(inner_cnt == 3'd4)
-          dac_d <= master_q;
+          dac_d <= master_q[13:0];
         end
       
       if(inner_cnt == 3'd1)
@@ -198,7 +202,9 @@ master_fifo
 	.wrfull ()  
 );
 
-
+wire slave_rdreq; assign slave_rdreq = rdreq_bus[4];
+wire [8:0] slave_used;
+wire [7:0] slave_data;
 
 fifo_trans_w #
 (
@@ -210,15 +216,15 @@ fifo_trans_w #
 slave_fifo
 (
   .aclr (!n_rst),
-	.data ({4'b0, q_fpga}),
+	.data ({4'b0000, q_fpga}),
 	.rdclk(sys_clk),
-	.rdreq(rdreq_bus[3]),
+	.rdreq(slave_rdreq),
 	.wrclk(dataclk_fpga),
 	.wrreq(state == RD_TO_DAC),   // be careful, state is driven by sys_clk, but expected by wrclk
 	
   .q      (slave_data),
 	.rdempty(slave_empty),
-	.rdusedw(),
+	.rdusedw(slave_used),
 	.wrfull ()  
 );
 
@@ -229,6 +235,15 @@ assign have_msg_bus[1] = 1'b0;
 assign have_msg_bus[2] = 1'b0;
 assign have_msg_bus[3] = 1'b0;
 assign have_msg_bus[4] = !slave_empty & (state == RD_TO_PC);
+
+assign pblk_fpga = 1'b0;
+assign clpob_fpga = clpdm_fpga;
+
+assign len_bus[39:32] = slave_used[7:0]; // EDIT THIS
+assign len_bus[31:0] = 32'b0;
+
+assign slave_data_bus[39:32] = slave_data;
+assign slave_data_bus[31:0] = 32'b0;
 
 // DEBUG ASSIGNS
 assign my_state = state;

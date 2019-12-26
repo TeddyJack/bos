@@ -293,9 +293,14 @@ func_testing func_testing
   .valid_bus      (valid_bus[22:18]),
   .rdreq_bus      (rdreq_bus[22:18]),
   .have_msg_bus   (have_msg_bus[22:18]),
+  .len_bus        (len_bus[8*18+:8*5]),
+  .slave_data_bus (slave_data_bus[8*18+:8*5]),
   .video_in_select(video_in_sel),
   // connect with DAC
   .dac_d        (dac_d),
+  // SBIS BOS parallel output
+  .dataclk_fpga (dataclk_fpga),
+  .q_fpga       (q_fpga),
   // SBIS BOS - signals related with analog video signal
   .clk_fpga     (clk_fpga),
   .shp_fpga     (shp_fpga),

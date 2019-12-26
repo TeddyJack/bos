@@ -22,9 +22,9 @@ module fpga_regs
   output reg       off_vdigital_fpga     // off_on v_digital
 );
 
-assign have_msg_bus = 10'b0;
-assign slave_data_bus = 80'b0;
-assign len_bus = 80'b0;
+assign have_msg_bus = 9'b0;
+assign slave_data_bus = 72'b0;
+assign len_bus = 72'b0;
 
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
