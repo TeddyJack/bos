@@ -1,123 +1,123 @@
 `include "defines.v"
 
-module bos(
-//// main
-//input fpga_clk_100,
-input fpga_clk_48,    // used in tb as 32 MHz
-//input fpga_clk_dac, // clk from dds, disabled for debugging
-//input sbis_power_on,  // flag that sbis is ok
-
-//// RS-485
-output  tx,
-input   rx,
-
-//// Digital potentiometers
-output  dac_din,
-output  dac_sclk,
-output  dac_sync_n,
-input   dac_sdo,
-input   dac_rdy,              // indicates completion of read/write
-output  dac_rst_n,            // reset resistor value to midscale
-output  din_power,            // pcb power, D1 D2 D13
-output  sclk_power,           // pcb power, D1 D2 D13
-output  rst_power_n,          // pcb power, D1 D2 D13
-output  sync_core_n,          // pcb power, D1
-output  sync_digital_n,       // pcb power,    D2
-output  sync_vpr_digital_n,   // pcb power,       D13
-
-//// ADCs
-output  adc_sclk_pwr, // D12  // solder externally
-output  adc_din_pwr,  // D12
-input   adc_dout_pwr, // D12
-output  adc_cs_pwr_n, // D12
-output  adc_sclk,     // D13, D14
-output  adc_din,      // D13, D14
-input   adc_dout,     // D13, D14
-output  adc1_cs_n,    // D13
-output  adc2_cs_n,    //      D14
-
-//// DDS
-output  dds_io_upd,   // ad9952 datasheet page 7
-output  dds_rst,
-output  dds_cs_n,
-inout   dds_sdio,
-output  dds_sclk,
-
-//// other control signals
-output        dac_gain,             // off/on analog signal attenuation
-output        dac_switch_out_fpga,  // differential/regular analog signal
-output        dac_ena_out_fpga,     // disable/enable output of analog signal
-output [3:0]  a,                    // address on multiplexer to select Q[i]
-output        load_pr_3v7,          // connects mux output with 1.65 kOhm load
-output        load_pdr,             // connects mux output with 240 Ohm load
-output        off_pr_digital_fpga,  // off/on overvoltage to digital inputs of BOS
-output        off_vcore_fpga,       // off/on v_core
-output        off_vdigital_fpga,    // off_on v_digital
-output        functional,           // off/on level translators
-
-//// RAM
-//output [12:0] sdram_a,
-//output [1:0]  sdram_ba,     // bank address
-//inout  [15:0] sdram_dq,     // data i/o
-//output        sdram_clk,
-//output        sdram_cke,    // clock enable
-//output        sdram_we_n,   // write_enable
-//output        sdram_cas_n,  // column address strobe command
-//output        sdram_ras_n,  // row address strobe command
-//output        sdram_cs_n,   // chip select
-
-//// DAC
-output [13:0] dac_d,
-output        dac_clk_ext,    // probably should be inverted fpga_clk_dac
-
-//// SBIS BOS
-input         dataclk_fpga,
-input  [11:0] q_fpga,       // parallel video data from sbis bos
-//
-//output        rst_fpga,     // rst of sbis
-output        clk_fpga,     // sampling clock for sbis
-//output        stby_fpga,    // вход режима простоя
-//
-output        shp_fpga,     // sampling clock for reference level
-output        shd_fpga,     // sampling clock for data level
-output        hd_fpga,      // horiz drive (used for color steering control)
-output        vd_fpga,      // vert drive (used for color steering control)
-output        clpdm_fpga,   // input clamp clock
-output        clpob_fpga,   // black level clamp clock
-output        pblk_fpga,    // pre blanking clock
-//
-output        sl_fpga,      // SPI control - cs
-output        sdatai_fpga,  // SPI control - mosi
-input         sdatao_fpga,  // SPI control - miso
-output        sck_fpga,     // SPI control - sclk
-//
-//output        slv_fpga,     // SPI video - cs      
-//output        sckv_fpga,    // SPI video - sclk    // 52 MHz
-//input         sdatav_fpga,   // SPI video - miso
-
-//// Debug
-input         n_rst,
-output [7:0]  my_rx_data,
-output        my_rx_valid,
-output [7:0]  my_master_data,
-output [1*`N_SRC-1:0] my_valid_bus,
-output [7:0]  my_tx_data,
-output        my_tx_valid,
-output [1*`N_SRC-1:0] my_have_msg_bus,
-
-output [1:0]  my_state,
-output my_m_wrreq,
-output [7:0] my_m_used,
-output my_m_rdreq,
-output [15:0] my_m_q,
-output [2:0] my_counter,
-output my_master_empty
+module bos
+(
+  //// input clocks
+  input fpga_clk_100,
+  input fpga_clk_48,    // used in tb as 32 MHz
+  input fpga_clk_dac,   // clk from dds
+  
+  //// RS-485
+  output  tx,
+  input   rx,
+  
+  //// Digital potentiometers
+  output  dac_din,
+  output  dac_sclk,
+  output  dac_sync_n,
+  input   dac_sdo,
+  input   dac_rdy,              // indicates completion of read/write
+  output  dac_rst_n,            // reset resistor value to midscale
+  output  din_power,            // pcb power, D1 D2 D13
+  output  sclk_power,           // pcb power, D1 D2 D13
+  output  rst_power_n,          // pcb power, D1 D2 D13
+  output  sync_core_n,          // pcb power, D1
+  output  sync_digital_n,       // pcb power,    D2
+  output  sync_vpr_digital_n,   // pcb power,       D13
+  
+  //// ADCs
+  output  adc_sclk_pwr, // D12  // solder externally, currently assigned to pin R14
+  output  adc_din_pwr,  // D12
+  input   adc_dout_pwr, // D12
+  output  adc_cs_pwr_n, // D12
+  output  adc_sclk,     // D13, D14
+  output  adc_din,      // D13, D14
+  input   adc_dout,     // D13, D14
+  output  adc1_cs_n,    // D13
+  output  adc2_cs_n,    //      D14
+  
+  //// DDS
+  output  dds_io_upd,   // ad9952 datasheet page 7
+  output  dds_rst,
+  output  dds_cs_n,
+  inout   dds_sdio,
+  output  dds_sclk,
+  
+  //// other control signals
+  output        dac_gain,             // off/on analog signal attenuation
+  output        dac_switch_out_fpga,  // differential/regular analog signal
+  output        dac_ena_out_fpga,     // disable/enable output of analog signal
+  output [3:0]  a,                    // address on multiplexer to select Q[i]
+  output        load_pr_3v7,          // connects mux output with 1.65 kOhm load
+  output        load_pdr,             // connects mux output with 240 Ohm load
+  output        off_pr_digital_fpga,  // off/on overvoltage to digital inputs of BOS
+  output        off_vcore_fpga,       // off/on v_core
+  output        off_vdigital_fpga,    // off_on v_digital
+  output        functional,           // off/on level translators
+  
+  //// RAM
+  output [12:0] sdram_a,
+  output [1:0]  sdram_ba,     // bank address
+  inout  [15:0] sdram_dq,     // data i/o
+  output        sdram_clk,
+  output        sdram_cke,    // clock enable
+  output        sdram_we_n,   // write_enable
+  output        sdram_cas_n,  // column address strobe command
+  output        sdram_ras_n,  // row address strobe command
+  output        sdram_cs_n,   // chip select
+  
+  //// DAC
+  output [13:0] dac_d,
+  output        dac_clk_ext,  // probably should be inverted fpga_clk_dac
+  
+  //// SBIS BOS
+  input         sbis_power_on,// flag that sbis is ok
+  output        rst_fpga,     // rst of sbis
+  output        stby_fpga,    // вход режима простоя
+  //
+  output        clk_fpga,     // sampling clock for data
+  output        shp_fpga,     // sampling clock for reference level
+  output        shd_fpga,     // sampling clock for data level
+  output        hd_fpga,      // horiz drive (used for color steering control)
+  output        vd_fpga,      // vert drive (used for color steering control)
+  output        clpdm_fpga,   // input clamp clock
+  output        clpob_fpga,   // black level clamp clock
+  output        pblk_fpga,    // pre blanking clock
+  //
+  output        sl_fpga,      // SPI control - cs
+  output        sdatai_fpga,  // SPI control - mosi
+  input         sdatao_fpga,  // SPI control - miso
+  output        sck_fpga,     // SPI control - sclk
+  //
+  input         dataclk_fpga,
+  input  [11:0] q_fpga,       // parallel video data from sbis bos
+  //
+  output        slv_fpga,     // serial video - cs      
+  output        sckv_fpga,    // serial video - sclk    // 52 MHz
+  input         sdatav_fpga,  // serial video - miso
+  
+  //// Debug
+  input         n_rst,
+  output [7:0]  my_rx_data,
+  output        my_rx_valid,
+  output [7:0]  my_master_data,
+  output [1*`N_SRC-1:0] my_valid_bus,
+  output [7:0]  my_tx_data,
+  output        my_tx_valid,
+  output [1*`N_SRC-1:0] my_have_msg_bus,
+  
+  output [1:0]  my_state,
+  output my_m_wrreq,
+  output [7:0] my_m_used,
+  output my_m_rdreq,
+  output [15:0] my_m_q,
+  output [2:0] my_counter,
+  output my_master_empty
 );
 
 
 wire sys_clk; assign sys_clk = fpga_clk_48;
-wire fpga_clk_dac; assign fpga_clk_dac = sys_clk; // assign for debugging
-assign dac_clk_ext = !fpga_clk_dac;
+assign dac_clk_ext = !sys_clk;
 
 wire [7:0]        master_data;
 wire [`N_SRC-1:0] valid_bus;
@@ -383,6 +383,20 @@ uart uart
   // Configuration
   .prescale           (PRESCALE[15:0])
 );
+
+
+
+// RAM is not used in this implementation
+assign sdram_a = 13'b0;
+assign sdram_ba = 2'b0;
+assign sdram_dq = 16'bz;
+assign sdram_clk = 1'b0;
+assign sdram_cke = 1'b0;
+assign sdram_we_n = 1'b1;
+assign sdram_cas_n = 1'b1;
+assign sdram_ras_n = 1'b1;
+assign sdram_cs_n = 1'b1;
+
 
 
 // debug assigns

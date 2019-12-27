@@ -239,7 +239,7 @@ assign have_msg_bus[4] = !slave_empty & (state == RD_TO_PC);
 assign pblk_fpga = 1'b0;
 assign clpob_fpga = clpdm_fpga;
 
-assign len_bus[39:32] = slave_used[7:0]; // EDIT THIS
+assign len_bus[39:32] = (slave_used > 8'd255) ? 8'd255 : slave_used[7:0];
 assign len_bus[31:0] = 32'b0;
 
 assign slave_data_bus[39:32] = slave_data;
