@@ -33,7 +33,8 @@ module func_testing
   output my_m_rdreq,
   output [15:0] my_m_q,
   output [2:0]  my_counter,
-  output my_master_empty
+  output my_master_empty,
+  output [7:0] my_outer_cnt
   
   //output my_s_empty,
   //output [8:0] my_s_used,
@@ -79,6 +80,7 @@ localparam [1:0] WR_FROM_PC = 2'h1;
 localparam [1:0] RD_TO_DAC  = 2'h2;   // or WR_FROM_BOS
 localparam [1:0] RD_TO_PC   = 2'h3;
 reg [2:0] inner_cnt;  // counts from 0 to 7
+reg [2:0] outer_cnt;  // to count samples TEMPORARY DECLARED AS 3 BITS
 
 always@(posedge sys_clk or negedge n_rst)
   if(!n_rst)
@@ -127,12 +129,15 @@ always@(posedge sys_clk or negedge n_rst)
     shp_fpga <= 0;
     shd_fpga <= 0;
     clk_fpga <= 0;
+    outer_cnt <= 0;
+    clpdm_fpga <= 0;
     end
   else
     begin
     if(state == RD_TO_DAC)
       begin
       inner_cnt <= inner_cnt + 1'b1;
+      
       master_rdreq <= (inner_cnt == 3'd7) & (!master_empty);
       
       if(inner_cnt == 3'd0)
@@ -160,6 +165,17 @@ always@(posedge sys_clk or negedge n_rst)
       else if(inner_cnt == 3'd7)
         shd_fpga <= 1;
 
+      if(inner_cnt == 3'd0)
+        outer_cnt <= outer_cnt + 1'b1;
+      
+      if(inner_cnt == 3'd0)
+        begin
+        if(outer_cnt == 8'd0)
+          clpdm_fpga <= 1;
+        else if((outer_cnt == 8'd6) | master_empty)    // = (8-2), where 2 is blanking period (in pixels)
+          clpdm_fpga <= 0;
+        end
+
       end
     else
       begin
@@ -167,6 +183,8 @@ always@(posedge sys_clk or negedge n_rst)
       shp_fpga <= 1;
       shd_fpga <= 1;
       clk_fpga <= 1;
+      outer_cnt <= 0;
+      clpdm_fpga <= 0;
       end
 
     end
@@ -245,6 +263,7 @@ assign len_bus[31:0] = 32'b0;
 assign slave_data_bus[39:32] = slave_data;
 assign slave_data_bus[31:0] = 32'b0;
 
+
 // DEBUG ASSIGNS
 assign my_state = state;
 assign my_m_wrreq = master_wrreq;
@@ -253,6 +272,7 @@ assign my_m_rdreq = master_rdreq;
 assign my_m_q = master_q;
 assign my_counter = inner_cnt;
 assign my_master_empty = master_empty;
+assign my_outer_cnt = outer_cnt;
 
 
 endmodule
