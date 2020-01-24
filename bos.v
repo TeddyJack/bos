@@ -112,7 +112,8 @@ module bos
   output my_m_rdreq,
   output [15:0] my_m_q,
   output [2:0] my_counter,
-  output my_master_empty
+  output my_master_empty,
+  output [7:0] my_outer_cnt
 );
 
 
@@ -317,7 +318,8 @@ func_testing func_testing
   .my_m_rdreq   (my_m_rdreq),
   .my_m_q       (my_m_q),
   .my_counter   (my_counter),
-  .my_master_empty(my_master_empty)
+  .my_master_empty(my_master_empty),
+  .my_outer_cnt (my_outer_cnt)
   
 );
 

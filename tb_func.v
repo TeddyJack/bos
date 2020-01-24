@@ -32,9 +32,11 @@ wire clk_fpga;
 wire [13:0] dac_d;
 wire shp_fpga;
 wire shd_fpga;
+wire clpdm_fpga;
 wire my_master_empty;
 reg [11:0] q_fpga;
 reg dataclk_fpga;
+wire [7:0] my_outer_cnt;
 
 bos i1
 (
@@ -65,7 +67,9 @@ bos i1
   .clk_fpga           (clk_fpga),
   .shp_fpga           (shp_fpga),
   .shd_fpga           (shd_fpga),
+  .clpdm_fpga         (clpdm_fpga),
   .dac_d              (dac_d),
+  .my_outer_cnt       (my_outer_cnt),
   .my_master_empty    (my_master_empty),
   
   .q_fpga             (q_fpga),
@@ -94,6 +98,8 @@ always #CLK_T      fpga_clk_48 = !fpga_clk_48;
 
 always@(posedge shd_fpga) q_fpga = dac_d[11:0];
 always@(*) dataclk_fpga = #62.5 clk_fpga;
+
+integer b;
 
 
 initial
@@ -138,13 +144,12 @@ initial
   
   send_to_rx(8'hDD);  // prefix
   send_to_rx(8'h16);  // address of dest
-  send_to_rx(8'd12);  // len
-  send_to_rx(8'h02); send_to_rx(8'h01);
-  send_to_rx(8'h04); send_to_rx(8'h03);
-  send_to_rx(8'h06); send_to_rx(8'h05);
-  send_to_rx(8'h08); send_to_rx(8'h07);
-  send_to_rx(8'h0A); send_to_rx(8'h09);
-  send_to_rx(8'h0C); send_to_rx(8'h0B);
+  send_to_rx(8'd64);  // len
+  for(b=1; b<=64; b=b+1)
+    begin
+    send_to_rx(b[7:0]);
+    end
+
   send_to_rx(8'hCC);  // crc
   
   #5000
