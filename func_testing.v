@@ -1,3 +1,5 @@
+`include "defines.v"
+
 module func_testing
 (
   // internal and system
@@ -29,7 +31,7 @@ module func_testing
   // debug
   output [1:0] my_state,
   output my_m_wrreq,
-  output [7:0] my_m_used,
+  output [$clog2(`SIZE)-1:0] my_m_used,
   output my_m_rdreq,
   output [15:0] my_m_q,
   output [2:0]  my_counter,
@@ -80,7 +82,7 @@ localparam [1:0] WR_FROM_PC = 2'h1;
 localparam [1:0] RD_TO_DAC  = 2'h2;   // or WR_FROM_BOS
 localparam [1:0] RD_TO_PC   = 2'h3;
 reg [2:0] inner_cnt;  // counts from 0 to 7
-reg [2:0] outer_cnt;  // to count samples TEMPORARY DECLARED AS 3 BITS
+reg [7:0] outer_cnt;  // to count samples 0 to 255
 
 always@(posedge sys_clk or negedge n_rst)
   if(!n_rst)
@@ -172,7 +174,7 @@ always@(posedge sys_clk or negedge n_rst)
         begin
         if(outer_cnt == 8'd0)
           clpdm_fpga <= 1;
-        else if((outer_cnt == 8'd6) | master_empty)    // = (8-2), where 2 is blanking period (in pixels)
+        else if((outer_cnt == 8'd246) | master_empty)    // = (256-10), where 10 is blanking len (in pixels)
           clpdm_fpga <= 0;
         end
 
@@ -196,11 +198,11 @@ always@(posedge sys_clk or negedge n_rst)
 
 wire master_wrreq;
 assign master_wrreq = samples_ena & (state == WR_FROM_PC);
-wire [7:0] used;
+wire [$clog2(`SIZE)-1:0] used;
 
 fifo_trans_w #
 (
-  .SIZE       (512),  // less than 8 doesn't work with parametrized fifo
+  .SIZE       (`SIZE*2),  // less than 8 doesn't work with parametrized fifo
   .WIDTH_IN   (8),
   .WIDTH_OUT  (16),
   .SHOW_AHEAD ("ON")
@@ -226,7 +228,7 @@ wire [7:0] slave_data;
 
 fifo_trans_w #
 (
-  .SIZE       (256),  // less than 8 doesn't work with parametrized fifo
+  .SIZE       (`SIZE),  // less than 8 doesn't work with parametrized fifo
   .WIDTH_IN   (16),
   .WIDTH_OUT  (8),
   .SHOW_AHEAD ("OFF")

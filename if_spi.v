@@ -1,4 +1,8 @@
-module if_spi #(parameter CPOL = 0)
+module if_spi
+#(
+  parameter CPOL = 0,
+  parameter CPHA = 0
+)
 (
   input n_rst,
   input clk,
@@ -35,7 +39,7 @@ wire rst_internal = !n_rst | m_full | s_full;
 
 
 
-spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL)) spi_master_inst
+spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL), .CPHA(CPHA)) spi_master_inst
 (
   .sclk     (sclk),
   .n_cs     (n_cs),

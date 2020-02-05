@@ -1,12 +1,17 @@
 // multi purpose SPI master than intended to work with two 8 bits-wide single clock FIFOs
 // "master->slave" FIFO must be SHOW AHEAD type
 // "slave->master" FIFO - as you wish, depends on your further logic
+// CPOL = 0: sclk is 0 when idle, starts with posedge
+// CPOL = 1: sclk is 1 when idle, starts with negedge
+// CPHA = 0: data is clocked by posedge
+// CPHA = 1: data is clocked by negedge
 
 
 module spi_master_byte
 #(
-  parameter CLK_DIV_EVEN = 8,
-  parameter CPOL = 0,
+  parameter [7:0] CLK_DIV_EVEN = 8,
+  parameter [0:0] CPOL = 0,
+  parameter [0:0] CPHA = 0,
   parameter [7:0] BYTES_PER_FRAME = 2
 )
 (
@@ -44,8 +49,9 @@ assign ready = (state == IDLE);
 assign mosi = mosi_reg[7];
 wire load_cond = !empty & ((state == IDLE) | (&cnt_bit));
 
-localparam [7:0] QUARTER = CLK_DIV_EVEN[7:0] / 8'd4;
-localparam [7:0] THREEQRTRS = QUARTER + CLK_DIV_EVEN[7:0] / 8'd2;
+localparam [7:0] HALF = CLK_DIV_EVEN / 8'd2;
+localparam [7:0] QUARTER = CLK_DIV_EVEN / 8'd4;
+localparam [7:0] THREEQRTRS = HALF + QUARTER;
 
 
 
@@ -73,14 +79,14 @@ always@(posedge clk or negedge n_rst)
 
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
-    sclk <= CPOL[0];
+    sclk <= CPOL;
   else if(!n_cs)
     begin
     if((cnt_ena == QUARTER) | (cnt_ena == THREEQRTRS))
       sclk <= ~sclk;
     end
   else
-    sclk <= CPOL[0];
+    sclk <= CPOL;
 
 
 
@@ -105,7 +111,7 @@ always@(posedge clk or negedge n_rst)
       begin
       if(&cnt_bit)
         begin
-        if(empty | ((|BYTES_PER_FRAME) & (byte_cnt == BYTES_PER_FRAME-8'd1)))
+        if(empty | ((|BYTES_PER_FRAME) & (byte_cnt == (BYTES_PER_FRAME-8'd1))))
           begin
           n_cs <= 1;
           byte_cnt <= 0;
@@ -156,18 +162,19 @@ always@(posedge clk or negedge n_rst)
       end
     end
 
-
+wire clocking_cond;
+assign clocking_cond = (CPOL ^ CPHA) ? (cnt_ena == THREEQRTRS) : (cnt_ena == QUARTER);
     
-always@(posedge clk or negedge n_rst)
+always@(negedge clk or negedge n_rst)
   if(!n_rst)
     miso_reg <= 0;
-  else if(ena)
+  else if(clocking_cond)
     begin
     miso_reg[0] <= miso;
     miso_reg[7:1] <= miso_reg[6:0];
     end
-  
-  
-  
-  
+
+
+
+
 endmodule

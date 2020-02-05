@@ -1,7 +1,8 @@
 module if_spi_multi
 #(
   parameter N_SLAVES = 3,
-  parameter CPOL = 0
+  parameter CPOL = 0,
+  parameter CPHA = 0
 )
 (
   input                     n_rst,
@@ -18,10 +19,7 @@ module if_spi_multi
   output  [8*N_SLAVES-1:0]  s_dout_bus,
   output  [8*N_SLAVES-1:0]  len_bus,
   output  [1*N_SLAVES-1:0]  have_msg_bus,
-  input   [1*N_SLAVES-1:0]  s_rdreq_bus,
-  
-  // debug
-  output [$clog2(N_SLAVES)-1:0] my_select
+  input   [1*N_SLAVES-1:0]  s_rdreq_bus
 );
 
 
@@ -54,7 +52,7 @@ assign have_msg_bus = ~s_empty_bus;
 
 
 
-spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL)) spi_master_inst
+spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL), .CPHA(CPHA)) spi_master_inst
 (
   .sclk     (sclk),
   .n_cs     (n_cs),
@@ -122,13 +120,7 @@ generate for(i=0; i<N_SLAVES; i=i+1)
   
   assign len_bus[(8*i+6)+:2] = 2'b00; // fill with zeros
   end
-  
 endgenerate
-
-
-
-// debug assigns
-assign my_select = select;
 
 
 

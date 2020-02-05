@@ -4,7 +4,7 @@ module bos
 (
   //// input clocks
   input fpga_clk_100,
-  input fpga_clk_48,    // used in tb as 32 MHz
+  input fpga_clk_48,
   input fpga_clk_dac,   // clk from dds
   
   //// RS-485
@@ -26,7 +26,7 @@ module bos
   output  sync_vpr_digital_n,   // pcb power,       D13
   
   //// ADCs
-  output  adc_sclk_pwr, // D12  // solder externally, currently assigned to pin R14
+  output  adc_sclk_pwr, // D12  // pin T4
   output  adc_din_pwr,  // D12
   input   adc_dout_pwr, // D12
   output  adc_cs_pwr_n, // D12
@@ -94,31 +94,30 @@ module bos
   //
   output        slv_fpga,     // serial video - cs      
   output        sckv_fpga,    // serial video - sclk    // 52 MHz
-  input         sdatav_fpga,  // serial video - miso
+  input         sdatav_fpga   // serial video - miso
   
   //// Debug
-  input         n_rst,
-  output [7:0]  my_rx_data,
-  output        my_rx_valid,
-  output [7:0]  my_master_data,
-  output [1*`N_SRC-1:0] my_valid_bus,
-  output [7:0]  my_tx_data,
-  output        my_tx_valid,
-  output [1*`N_SRC-1:0] my_have_msg_bus,
-  
-  output [1:0]  my_state,
-  output my_m_wrreq,
-  output [7:0] my_m_used,
-  output my_m_rdreq,
-  output [15:0] my_m_q,
-  output [2:0] my_counter,
-  output my_master_empty,
-  output [7:0] my_outer_cnt
+  //input         n_rst,
+  //output [7:0]  my_rx_data,
+  //output        my_rx_valid,
+  //output [7:0]  my_master_data,
+  //output [1*`N_SRC-1:0] my_valid_bus,
+  //output [7:0]  my_tx_data,
+  //output        my_tx_valid,
+  //output [1*`N_SRC-1:0] my_have_msg_bus,
+  //
+  //output [1:0]  my_state,
+  //output my_m_wrreq,
+  //output [7:0] my_m_used,
+  //output my_m_rdreq,
+  //output [15:0] my_m_q,
+  //output [2:0] my_counter,
+  //output my_master_empty,
+  //output [7:0] my_outer_cnt
 );
 
 
-wire sys_clk; assign sys_clk = fpga_clk_48;
-assign dac_clk_ext = !sys_clk;
+wire sys_clk;
 
 wire [7:0]        master_data;
 wire [`N_SRC-1:0] valid_bus;
@@ -138,17 +137,18 @@ wire [1*`N_SRC-1:0] rdreq_bus;
 
 wire video_in_sel;
 
-//wire n_rst;
-//pll_main pll_main
-//(
-//  .inclk0 (fpga_clk_100),
-//  .c0     (sys_clk),
-//  .locked ()
-//);
+wire n_rst;
+pll_main pll_main
+(
+  .inclk0 (fpga_clk_100),
+  .c0     (sys_clk),
+  .c1     (dac_clk_ext),
+  .locked (n_rst)
+);
 
 
 // address 0x00
-if_spi #(.CPOL(0)) potentiometer_1
+if_spi #(.CPOL(0), .CPHA(1)) potentiometer_1
 (
   .n_rst    (n_rst),
   .clk      (sys_clk),
@@ -167,7 +167,7 @@ assign dac_rst_n = 1'b1; // no hardware reset
 
 
 // addresses 0x01-0x03
-if_spi_multi #(.N_SLAVES(3), .CPOL(0)) potentiometers
+if_spi_multi #(.N_SLAVES(3), .CPOL(0), .CPHA(1)) potentiometers
 (
   .n_rst       (n_rst),
   .clk         (sys_clk),
@@ -186,7 +186,7 @@ assign rst_power_n = 1'b1;
 
 
 // address 0x04
-if_spi #(.CPOL(1)) adc_1
+if_spi #(.CPOL(1), .CPHA(1)) adc_1
 (
   .n_rst    (n_rst),
   .clk      (sys_clk),
@@ -204,7 +204,7 @@ if_spi #(.CPOL(1)) adc_1
 
 
 // addresses 0x05-0x06
-if_spi_multi #(.N_SLAVES(2), .CPOL(1)) adcs
+if_spi_multi #(.N_SLAVES(2), .CPOL(1), .CPHA(1)) adcs
 (
   .n_rst       (n_rst),
   .clk         (sys_clk),
@@ -241,7 +241,7 @@ assign dds_rst = 0;
 
 
 // address 0x08
-if_spi #(.CPOL(0)) spi_bos
+if_spi #(.CPOL(1), .CPHA(0)) spi_bos   // need to know CPHA
 (
   .n_rst    (n_rst),
   .clk      (sys_clk),
@@ -310,16 +310,16 @@ func_testing func_testing
   .vd_fpga      (vd_fpga),
   .clpdm_fpga   (clpdm_fpga),
   .clpob_fpga   (clpob_fpga),
-  .pblk_fpga    (pblk_fpga),
+  .pblk_fpga    (pblk_fpga)
   // debug
-  .my_state     (my_state),
-  .my_m_wrreq   (my_m_wrreq),
-  .my_m_used    (my_m_used),
-  .my_m_rdreq   (my_m_rdreq),
-  .my_m_q       (my_m_q),
-  .my_counter   (my_counter),
-  .my_master_empty(my_master_empty),
-  .my_outer_cnt (my_outer_cnt)
+  //.my_state     (my_state),
+  //.my_m_wrreq   (my_m_wrreq),
+  //.my_m_used    (my_m_used),
+  //.my_m_rdreq   (my_m_rdreq),
+  //.my_m_q       (my_m_q),
+  //.my_counter   (my_counter),
+  //.my_master_empty(my_master_empty),
+  //.my_outer_cnt (my_outer_cnt)
   
 );
 
@@ -402,12 +402,12 @@ assign sdram_cs_n = 1'b1;
 
 
 // debug assigns
-assign my_rx_data = rx_data;
-assign my_rx_valid = rx_valid;
-assign my_master_data = master_data;
-assign my_valid_bus = valid_bus;
-assign my_tx_data = tx_data;
-assign my_tx_valid = tx_valid;
-assign my_have_msg_bus = have_msg_bus;
+//assign my_rx_data = rx_data;
+//assign my_rx_valid = rx_valid;
+//assign my_master_data = master_data;
+//assign my_valid_bus = valid_bus;
+//assign my_tx_data = tx_data;
+//assign my_tx_valid = tx_valid;
+//assign my_have_msg_bus = have_msg_bus;
 
 endmodule
