@@ -300,7 +300,7 @@ func_testing func_testing
   // connect with DAC
   .dac_d        (dac_d),
   // SBIS BOS parallel output
-  .dataclk_fpga (dataclk_fpga),
+  .dataclk_fpga (/*dataclk_fpga*/!clk_fpga),
   .q_fpga       (q_fpga),
   // SBIS BOS - signals related with analog video signal
   .clk_fpga     (clk_fpga),

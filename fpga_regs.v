@@ -35,7 +35,7 @@ always@(posedge clk or negedge n_rst)
     dac_gain            <= 0;
     dac_switch_out_fpga <= 0;
     dac_ena_out_fpga    <= 0;
-    off_pr_digital_fpga <= 0;
+    off_pr_digital_fpga <= 1;
     functional          <= 0;
     off_vcore_fpga      <= 1;
     off_vdigital_fpga   <= 1;

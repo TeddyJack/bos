@@ -34,7 +34,7 @@ module func_testing
   output [$clog2(`SIZE)-1:0] my_m_used,
   output my_m_rdreq,
   output [15:0] my_m_q,
-  output [2:0]  my_counter,
+  output [7:0]  my_counter,
   output my_master_empty,
   output [7:0] my_outer_cnt
   
@@ -45,14 +45,14 @@ module func_testing
 
 
 
-reg [15:0] black_level;
+reg [23:0] local_shift_reg;
 always@(posedge sys_clk or negedge n_rst)
   if(!n_rst)
     begin
     video_in_select <= 0;
     hd_fpga         <= 0;
     vd_fpga         <= 0;
-    black_level     <= 0;
+    local_shift_reg <= 0;
     end
   else
     begin
@@ -62,12 +62,18 @@ always@(posedge sys_clk or negedge n_rst)
                       vd_fpga          <= master_data[0];
                       end
     if(valid_bus[2])  begin
-                      black_level[7:0] <= black_level[15:8];  // if lsb comes first
-                      black_level[15:8] <= master_data;
+                      local_shift_reg[15:0] <= local_shift_reg[23:8];  // if lsb comes first
+                      local_shift_reg[23:16] <= master_data;
                       end
     end
 
-
+wire [13:0] black_level;
+assign black_level = local_shift_reg[13:0];
+wire [8:0] num_reps_x2;
+assign num_reps_x2 = {local_shift_reg[23:16],1'b0};
+wire [7:0] HALF = num_reps_x2[8:1];
+wire [6:0] QUARTER = num_reps_x2[8:2];
+wire [5:0] ONE_EIGHTH = num_reps_x2[8:3];
 
 
 wire ctrl_ena; assign ctrl_ena = valid_bus[3];
@@ -81,7 +87,7 @@ localparam [1:0] IDLE       = 2'h0;   // WR = write to RAM; RD = read from RAM
 localparam [1:0] WR_FROM_PC = 2'h1;
 localparam [1:0] RD_TO_DAC  = 2'h2;   // or WR_FROM_BOS
 localparam [1:0] RD_TO_PC   = 2'h3;
-reg [2:0] inner_cnt;  // counts from 0 to 7
+reg [7:0] inner_cnt;  // counts repetitions
 reg [7:0] outer_cnt;  // to count samples 0 to 255
 
 always@(posedge sys_clk or negedge n_rst)
@@ -107,7 +113,7 @@ always@(posedge sys_clk or negedge n_rst)
       end
     RD_TO_DAC:
       begin
-      if(master_empty & (inner_cnt == 3'd0))
+      if(master_empty & (inner_cnt == 8'd0))
         state <= RD_TO_PC;
       end
     RD_TO_PC:
@@ -138,13 +144,16 @@ always@(posedge sys_clk or negedge n_rst)
     begin
     if(state == RD_TO_DAC)
       begin
-      inner_cnt <= inner_cnt + 1'b1;
+      if(inner_cnt < (num_reps_x2 - 1'b1))
+        inner_cnt <= inner_cnt + 1'b1;
+      else
+        inner_cnt <= 0;
       
-      master_rdreq <= (inner_cnt == 3'd7) & (!master_empty);
+      master_rdreq <= (inner_cnt == (num_reps_x2 - 1'b1)) & (!master_empty);
       
       if(inner_cnt == 3'd0)
         clk_fpga <= 1;
-      else if(inner_cnt == 3'd4)
+      else if(inner_cnt == HALF)
         clk_fpga <= 0;
         
       if(ccd_or_plain)
@@ -153,24 +162,24 @@ always@(posedge sys_clk or negedge n_rst)
         begin
         if(inner_cnt == 3'd0)
           dac_d <= black_level[13:0];
-        else if(inner_cnt == 3'd4)
+        else if(inner_cnt == HALF)
           dac_d <= master_q[13:0];
         end
       
-      if(inner_cnt == 3'd1)
+      if(inner_cnt == ONE_EIGHTH)
         shp_fpga <= 0;
-      else if(inner_cnt == 3'd3)
+      else if(inner_cnt == (QUARTER + ONE_EIGHTH))
         shp_fpga <= 1;
       
-      if(inner_cnt == 3'd5)
+      if(inner_cnt == (HALF + ONE_EIGHTH))
         shd_fpga <= 0;
-      else if(inner_cnt == 3'd7)
+      else if(inner_cnt == (HALF + QUARTER + ONE_EIGHTH))
         shd_fpga <= 1;
 
-      if(inner_cnt == 3'd0)
+      if(inner_cnt == 7'd0)
         outer_cnt <= outer_cnt + 1'b1;
       
-      if(inner_cnt == 3'd0)
+      if(inner_cnt == 7'd0)
         begin
         if(outer_cnt == 8'd0)
           clpdm_fpga <= 1;
