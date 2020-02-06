@@ -47,7 +47,7 @@ localparam SHIFT = 1'b1;
 
 assign ready = (state == IDLE);
 assign mosi = mosi_reg[7];
-wire load_cond = !empty & ((state == IDLE) | (&cnt_bit));
+wire load_cond = !empty & ((state == IDLE) | (&cnt_bit)) & !((|BYTES_PER_FRAME) & (byte_cnt == (BYTES_PER_FRAME-8'd1)));
 
 localparam [7:0] HALF = CLK_DIV_EVEN / 8'd2;
 localparam [7:0] QUARTER = CLK_DIV_EVEN / 8'd4;
