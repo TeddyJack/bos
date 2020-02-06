@@ -98,6 +98,7 @@ always@(posedge clk or negedge n_rst or posedge rst_timeout)
           begin
           len <= rx_data;
           state <= READ_DATA;
+          crc_calcked <= dest + rx_data;
           end
         READ_DATA:
           begin
@@ -113,7 +114,7 @@ always@(posedge clk or negedge n_rst or posedge rst_timeout)
         READ_CRC:
           begin
           crc_calcked <= 0;
-          //if(crc_calcked == rx_data)    // ignore crc at debugging
+          //if(crc_calcked == rx_data)    // comment this line to ignore crc at debugging
             begin
             state <= FORWARD_DATA;
             end

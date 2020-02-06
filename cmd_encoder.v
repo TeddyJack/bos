@@ -91,7 +91,7 @@ else
       state <= SEND_DATA;
       tx_data <= current_data;
       cnt <= cnt + 1'b1;        // difference
-      crc <= current_data;
+      crc <= current_data + current_len + current_source;
       end
     SEND_DATA:
       if(cnt < current_len)
