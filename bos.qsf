@@ -104,8 +104,8 @@ set_location_assignment PIN_F2 -to pblk_fpga
 set_location_assignment PIN_F1 -to shd_fpga
 set_location_assignment PIN_G2 -to clpob_fpga
 set_location_assignment PIN_G1 -to clpdm_fpga
-set_location_assignment PIN_N3 -to dac_switch_out_fpga
-set_location_assignment PIN_P3 -to dac_ena_out_fpga
+set_location_assignment PIN_P3 -to dac_switch_out_fpga
+set_location_assignment PIN_N3 -to dac_ena_out_fpga
 set_location_assignment PIN_R3 -to off_vcore_fpga
 set_location_assignment PIN_T3 -to off_vdigital_fpga
 set_location_assignment PIN_T2 -to off_pr_digital_fpga

@@ -87,7 +87,7 @@ localparam [1:0] IDLE       = 2'h0;   // WR = write to RAM; RD = read from RAM
 localparam [1:0] WR_FROM_PC = 2'h1;
 localparam [1:0] RD_TO_DAC  = 2'h2;   // or WR_FROM_BOS
 localparam [1:0] RD_TO_PC   = 2'h3;
-reg [7:0] inner_cnt;  // counts repetitions
+reg [8:0] inner_cnt;  // counts repetitions
 reg [7:0] outer_cnt;  // to count samples 0 to 255
 
 always@(posedge sys_clk or negedge n_rst)
@@ -113,7 +113,7 @@ always@(posedge sys_clk or negedge n_rst)
       end
     RD_TO_DAC:
       begin
-      if(master_empty & (inner_cnt == 8'd0))
+      if(master_empty & (inner_cnt == 1'b0))
         state <= RD_TO_PC;
       end
     RD_TO_PC:
@@ -151,7 +151,7 @@ always@(posedge sys_clk or negedge n_rst)
       
       master_rdreq <= (inner_cnt == (num_reps_x2 - 1'b1)) & (!master_empty);
       
-      if(inner_cnt == 3'd0)
+      if(inner_cnt == 1'b0)
         clk_fpga <= 1;
       else if(inner_cnt == HALF)
         clk_fpga <= 0;
@@ -160,7 +160,7 @@ always@(posedge sys_clk or negedge n_rst)
         dac_d <= master_q[13:0];
       else
         begin
-        if(inner_cnt == 3'd0)
+        if(inner_cnt == 1'b0)
           dac_d <= black_level[13:0];
         else if(inner_cnt == HALF)
           dac_d <= master_q[13:0];
@@ -176,12 +176,12 @@ always@(posedge sys_clk or negedge n_rst)
       else if(inner_cnt == (HALF + QUARTER + ONE_EIGHTH))
         shd_fpga <= 1;
 
-      if(inner_cnt == 7'd0)
+      if(inner_cnt == 1'b0)
         outer_cnt <= outer_cnt + 1'b1;
       
-      if(inner_cnt == 7'd0)
+      if(inner_cnt == 1'b0)
         begin
-        if(outer_cnt == 8'd0)
+        if(outer_cnt == 1'b0)
           clpdm_fpga <= 1;
         else if((outer_cnt == 8'd246) | master_empty)    // = (256-10), where 10 is blanking len (in pixels)
           clpdm_fpga <= 0;
