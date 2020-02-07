@@ -29,7 +29,7 @@ module func_testing
   output      pblk_fpga,
   
   // debug
-  output [1:0] my_state,
+  output [2:0] my_state,
   output my_m_wrreq,
   output [$clog2(`SIZE)-1:0] my_m_used,
   output my_m_rdreq,
@@ -82,11 +82,12 @@ reg ccd_or_plain;
 wire [15:0] master_q;
 wire master_empty;
 wire slave_empty;
-reg [1:0] state;
-localparam [1:0] IDLE       = 2'h0;   // WR = write to RAM; RD = read from RAM
-localparam [1:0] WR_FROM_PC = 2'h1;
-localparam [1:0] RD_TO_DAC  = 2'h2;   // or WR_FROM_BOS
-localparam [1:0] RD_TO_PC   = 2'h3;
+reg [2:0] state;
+localparam [2:0] IDLE         = 3'h0;   // WR = write to RAM; RD = read from RAM
+localparam [2:0] WR_FROM_PC   = 3'h1;
+localparam [2:0] RD_TO_DAC    = 3'h2;   // or WR_FROM_BOS
+localparam [2:0] WAIT_FOR_REQ = 3'h3;
+localparam [2:0] RD_TO_PC     = 3'h4;
 reg [8:0] inner_cnt;  // counts repetitions
 reg [7:0] outer_cnt;  // to count samples 0 to 255
 
@@ -114,8 +115,11 @@ always@(posedge sys_clk or negedge n_rst)
     RD_TO_DAC:
       begin
       if(master_empty & (inner_cnt == 1'b0))
-        state <= RD_TO_PC;
+        state <= WAIT_FOR_REQ;
       end
+    WAIT_FOR_REQ:
+      if(ctrl_ena & (master_data == 8'h5A))
+        state <= RD_TO_PC;
     RD_TO_PC:
       if(slave_empty)
         state <= IDLE;
