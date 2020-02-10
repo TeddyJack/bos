@@ -34,7 +34,7 @@ module func_testing
   output [$clog2(`SIZE)-1:0] my_m_used,
   output my_m_rdreq,
   output [15:0] my_m_q,
-  output [7:0]  my_counter,
+  output [8:0]  my_counter,
   output my_master_empty,
   output [7:0] my_outer_cnt
   
@@ -236,7 +236,7 @@ master_fifo
 );
 
 wire slave_rdreq; assign slave_rdreq = rdreq_bus[4];
-wire [8:0] slave_used;
+wire [$clog2(`SIZE)-1:0] slave_used;
 wire [7:0] slave_data;
 
 fifo_trans_w #
