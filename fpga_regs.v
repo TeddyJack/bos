@@ -3,12 +3,12 @@ module fpga_regs
   input            n_rst,
   input            clk,
   input  [7:0]     master_data,
-  input  [8:0]     valid_bus,
+  input  [9:0]     valid_bus,
   
-  input  [8:0]     rdreq_bus,
-  output [8:0]     have_msg_bus,
-  output [8*8+7:0] slave_data_bus,
-  output [8*8+7:0] len_bus,
+  input  [9:0]     rdreq_bus,
+  output [9:0]     have_msg_bus,
+  output [9*8+7:0] slave_data_bus,
+  output [9*8+7:0] len_bus,
   
   output reg [3:0] a,                    // address on multiplexer to select Q[i]
   output reg       load_pr_3v7,          // connects mux output with 1.65 kOhm load
@@ -19,12 +19,14 @@ module fpga_regs
   output reg       off_pr_digital_fpga,  // off/on overvoltage to digital inputs of BOS
   output reg       functional,           // off/on level translators
   output reg       off_vcore_fpga,       // off/on v_core
-  output reg       off_vdigital_fpga     // off_on v_digital
+  output reg       off_vdigital_fpga,    // off_on v_digital
+  output reg       rst_fpga,
+  output reg       stby_fpga
 );
 
-assign have_msg_bus = 9'b0;
-assign slave_data_bus = 72'b0;
-assign len_bus = 72'b0;
+assign have_msg_bus = 10'b0;
+assign slave_data_bus = 80'b0;
+assign len_bus = 80'b0;
 
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
@@ -39,6 +41,8 @@ always@(posedge clk or negedge n_rst)
     functional          <= 0;
     off_vcore_fpga      <= 1;
     off_vdigital_fpga   <= 1;
+    rst_fpga            <= 1;
+    stby_fpga           <= 0;
     end
   else
     begin
@@ -47,13 +51,17 @@ always@(posedge clk or negedge n_rst)
                      load_pr_3v7         <= master_data[1];
                      load_pdr            <= master_data[0];
                      end
-    if(valid_bus[2]) dac_gain            <= master_data[0];           
+    if(valid_bus[2]) dac_gain            <= master_data[0];
     if(valid_bus[3]) dac_switch_out_fpga <= master_data[0];
     if(valid_bus[4]) dac_ena_out_fpga    <= master_data[0];
     if(valid_bus[5]) off_pr_digital_fpga <= master_data[0];
     if(valid_bus[6]) functional          <= master_data[0];
     if(valid_bus[7]) off_vcore_fpga      <= master_data[0];
     if(valid_bus[8]) off_vdigital_fpga   <= master_data[0];
+    if(valid_bus[9]) begin
+                     stby_fpga           <= master_data[1];
+                     rst_fpga            <= master_data[0];
+                     end
     end
 
 

@@ -90,21 +90,31 @@ localparam [2:0] WAIT_FOR_REQ = 3'h3;
 localparam [2:0] RD_TO_PC     = 3'h4;
 reg [8:0] inner_cnt;  // counts repetitions
 reg [7:0] outer_cnt;  // to count samples 0 to 255
+reg periodical_mode;
 
 always@(posedge sys_clk or negedge n_rst)
   if(!n_rst)
     begin
     state <= IDLE;
     ccd_or_plain <= 0;
+    periodical_mode <= 0;
     end
   else
     case(state)
     IDLE:
       begin
-      if(ctrl_ena & (master_data[7:4] == 4'hA))    // start
+      if(ctrl_ena)    // start
         begin
-        state <= WR_FROM_PC;
-        ccd_or_plain <= master_data[0];
+        if(master_data[7:4] == 4'hA)
+          begin
+          state <= WR_FROM_PC;
+          ccd_or_plain <= master_data[0];
+          end
+        else if(master_data == 8'hB0)
+          begin
+          periodical_mode <= 1;
+          state <= RD_TO_DAC;
+          end
         end
       end
     WR_FROM_PC:
@@ -114,7 +124,15 @@ always@(posedge sys_clk or negedge n_rst)
       end
     RD_TO_DAC:
       begin
-      if(master_empty & (inner_cnt == 1'b0))
+      if(periodical_mode)
+        begin
+        if(ctrl_ena & (master_data == 8'hB1))
+          begin
+          state <= IDLE;
+          periodical_mode <= 0;
+          end
+        end
+      else if(master_empty & (inner_cnt == 1'b0))
         state <= WAIT_FOR_REQ;
       end
     WAIT_FOR_REQ:
@@ -153,7 +171,7 @@ always@(posedge sys_clk or negedge n_rst)
       else
         inner_cnt <= 0;
       
-      master_rdreq <= (inner_cnt == (num_reps_x2 - 1'b1)) & (!master_empty);
+      master_rdreq <= (inner_cnt == (num_reps_x2 - 1'b1)) & (!master_empty) & (!periodical_mode);
       
       if(inner_cnt == 1'b0)
         clk_fpga <= 1;

@@ -264,11 +264,11 @@ fpga_regs fpga_regs
   .n_rst              (n_rst),
   .clk                (sys_clk),
   .master_data        (master_data),
-  .valid_bus          (valid_bus[17:9]),
-  .rdreq_bus          (rdreq_bus[17:9]),
-  .have_msg_bus       (have_msg_bus[17:9]),
-  .slave_data_bus     (slave_data_bus[8*9+:8*9]), // (8 * lowest address) +: (8 * num of addresses)
-  .len_bus            (len_bus[8*9+:8*9]),
+  .valid_bus          ({valid_bus[24], valid_bus[17:9]}),
+  .rdreq_bus          ({rdreq_bus[24], rdreq_bus[17:9]}),
+  .have_msg_bus       ({have_msg_bus[24], have_msg_bus[17:9]}),
+  .slave_data_bus     ({slave_data_bus[8*24+:8*1], slave_data_bus[8*9+:8*9]}), // (8 * lowest address) +: (8 * num of addresses)
+  .len_bus            ({len_bus[8*24+:8*1], len_bus[8*9+:8*9]}),
   
   .a                  (a),
   .load_pr_3v7        (load_pr_3v7),
@@ -279,7 +279,9 @@ fpga_regs fpga_regs
   .off_pr_digital_fpga(off_pr_digital_fpga),
   .functional         (functional),   
   .off_vcore_fpga     (off_vcore_fpga),
-  .off_vdigital_fpga  (off_vdigital_fpga)
+  .off_vdigital_fpga  (off_vdigital_fpga),
+  .rst_fpga           (rst_fpga),
+  .stby_fpga          (stby_fpga)
 );
 
 
