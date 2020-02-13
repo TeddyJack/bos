@@ -1,16 +1,19 @@
-module if_spi_multi
-#(
+module if_spi_multi #(
   parameter N_SLAVES = 3,
+  parameter CLK_DIV_EVEN = 8,
   parameter CPOL = 0,
-  parameter CPHA = 0
-)
-(
+  parameter CPHA = 0,
+  parameter BYTES_PER_FRAME = 2,
+  parameter BIDIR = 0,
+  parameter SWAP_DIR_BIT_NUM = 8
+)(
   input                     n_rst,
   input                     clk,
 
   output                    sclk,
   output                    mosi,
   input                     miso,
+  inout                     sdio,
   output  [1*N_SLAVES-1:0]  n_cs_bus,
   
   input   [7:0]             m_din,
@@ -52,12 +55,20 @@ assign have_msg_bus = ~s_empty_bus;
 
 
 
-spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL), .CPHA(CPHA)) spi_master_inst
-(
+spi_master_byte #(
+  .CLK_DIV_EVEN     (CLK_DIV_EVEN),
+  .CPOL             (CPOL),
+  .CPHA             (CPHA),
+  .BYTES_PER_FRAME  (BYTES_PER_FRAME),
+  .BIDIR            (BIDIR),
+  .SWAP_DIR_BIT_NUM (SWAP_DIR_BIT_NUM)
+)
+spi_master_inst (
   .sclk     (sclk),
   .n_cs     (n_cs),
   .mosi     (mosi),
   .miso     (miso),
+  .sdio     (sdio),
   
   .n_rst    (n_rst),
   .clk      (clk),

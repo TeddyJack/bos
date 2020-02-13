@@ -1,9 +1,11 @@
-module if_spi
-#(
+module if_spi #(
+  parameter CLK_DIV_EVEN = 8,
   parameter CPOL = 0,
-  parameter CPHA = 0
-)
-(
+  parameter CPHA = 0,
+  parameter BYTES_PER_FRAME = 2,
+  parameter BIDIR = 0,
+  parameter SWAP_DIR_BIT_NUM = 8
+)(
   input n_rst,
   input clk,
   
@@ -11,6 +13,7 @@ module if_spi
   output  sclk,
   output  mosi,
   input   miso,
+  inout   sdio,
   
   input [7:0] in_data,
   input       in_ena,
@@ -31,7 +34,7 @@ wire [7:0]  s_din;
 wire        s_wrreq;
 wire        s_empty;
 wire        s_full;
-wire [5:0]  used;
+wire [5:0]  used;     // since 64 words FIFO used, the width is 6
 
 assign have_msg = !s_empty;
 assign len = {2'b00, used};
@@ -39,12 +42,20 @@ wire rst_internal = !n_rst | m_full | s_full;
 
 
 
-spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL), .CPHA(CPHA)) spi_master_inst
-(
+spi_master_byte #(
+  .CLK_DIV_EVEN     (CLK_DIV_EVEN),
+  .CPOL             (CPOL),
+  .CPHA             (CPHA),
+  .BYTES_PER_FRAME  (BYTES_PER_FRAME),
+  .BIDIR            (BIDIR),
+  .SWAP_DIR_BIT_NUM (SWAP_DIR_BIT_NUM)
+)
+spi_master_inst (
   .sclk     (sclk),
   .n_cs     (n_cs),
   .mosi     (mosi),
   .miso     (miso),
+  .sdio     (sdio),
   
   .n_rst    (!rst_internal),
   .clk      (clk),
@@ -59,8 +70,7 @@ spi_master_byte #(.CLK_DIV_EVEN(8), .CPOL(CPOL), .CPHA(CPHA)) spi_master_inst
 
 
 
-sc_fifo fifo_master
-(
+sc_fifo fifo_master (
   .aclr (rst_internal),
   .clock(clk),
   .data (in_data),
@@ -73,8 +83,7 @@ sc_fifo fifo_master
 
 
 
-sc_fifo fifo_slave
-(
+sc_fifo fifo_slave (
   .aclr (rst_internal),
   .clock(clk),
   .data (s_din),

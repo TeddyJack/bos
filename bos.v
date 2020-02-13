@@ -1,11 +1,10 @@
 `include "defines.v"
 
-module bos
-(
+module bos (
   //// input clocks
   input fpga_clk_100,
-  input fpga_clk_48,
-  input fpga_clk_dac,   // clk from dds
+//input fpga_clk_48,    // not used so far; assign to PIN_A8 if used
+//input fpga_clk_dac,   // clk from dds; not used so far; assign to PIN_R9 if used
   
   //// RS-485
   output  tx,
@@ -26,7 +25,7 @@ module bos
   output  sync_vpr_digital_n,   // pcb power,       D13
   
   //// ADCs
-  output  adc_sclk_pwr, // D12  // pin T4
+  output  adc_sclk_pwr, // D12
   output  adc_din_pwr,  // D12
   input   adc_dout_pwr, // D12
   output  adc_cs_pwr_n, // D12
@@ -68,12 +67,12 @@ module bos
   
   //// DAC
   output [13:0] dac_d,
-  output        dac_clk_ext,  // probably should be inverted fpga_clk_dac
+  output        dac_clk_ext,
   
   //// SBIS BOS
   input         sbis_power_on,// flag that sbis is ok
   output        rst_fpga,     // rst of sbis
-  output        stby_fpga,    // вход режима простоя
+  output        stby_fpga,    // standby mode of sbis
   //
   output        clk_fpga,     // sampling clock for data
   output        shp_fpga,     // sampling clock for reference level
@@ -85,36 +84,21 @@ module bos
   output        pblk_fpga,    // pre blanking clock
   //
   output        sl_fpga,      // SPI control - cs
-  output        sdatai_fpga,  // SPI control - mosi
-  input         sdatao_fpga,  // SPI control - miso
+  inout         sdatai_fpga,  // SPI control - sdio
+//input         sdatao_fpga,  // SPI control - miso, not used so far; assign to PIN_B7 if used
   output        sck_fpga,     // SPI control - sclk
   //
-  input         dataclk_fpga,
+  //input         dataclk_fpga, // delayed clk_fpga
   input  [11:0] q_fpga,       // parallel video data from sbis bos
   //
   output        slv_fpga,     // serial video - cs      
-  output        sckv_fpga,    // serial video - sclk    // 52 MHz
+  output        sckv_fpga,    // serial video - sclk
   input         sdatav_fpga   // serial video - miso
-  
-  //// Debug
-  //input         n_rst,
-  //output [7:0]  my_rx_data,
-  //output        my_rx_valid,
-  //output [7:0]  my_master_data,
-  //output [1*`N_SRC-1:0] my_valid_bus,
-  //output [7:0]  my_tx_data,
-  //output        my_tx_valid,
-  //output [1*`N_SRC-1:0] my_have_msg_bus,
-  //
-  //output [1:0]  my_state,
-  //output my_m_wrreq,
-  //output [7:0] my_m_used,
-  //output my_m_rdreq,
-  //output [15:0] my_m_q,
-  //output [2:0] my_counter,
-  //output my_master_empty,
-  //output [7:0] my_outer_cnt
 );
+
+// DEBUG ASSIGNS
+wire fpga_clk_dac = sys_clk;    // since DDS is not used, DDS clk is replaced with sys_clk
+wire dataclk_fpga = !clk_fpga;  // since BOS is not connected, we have to emulate dataclk_fpga somehow
 
 
 wire sys_clk;
@@ -138,18 +122,25 @@ wire [1*`N_SRC-1:0] rdreq_bus;
 wire video_in_sel;
 
 wire n_rst;
-pll_main pll_main
-(
+
+assign dac_clk_ext = fpga_clk_dac;
+
+pll_main pll_main (
   .inclk0 (fpga_clk_100),
   .c0     (sys_clk),
-  .c1     (dac_clk_ext),
   .locked (n_rst)
 );
 
 
 // address 0x00
-if_spi #(.CPOL(0), .CPHA(1)) potentiometer_1
-(
+if_spi #(
+  .CLK_DIV_EVEN(8),
+  .CPOL(0),
+  .CPHA(1),
+  .BYTES_PER_FRAME(2),
+  .BIDIR(0)
+)
+potentiometer_1 (
   .n_rst    (n_rst),
   .clk      (sys_clk),
   .n_cs     (dac_sync_n),
@@ -163,12 +154,20 @@ if_spi #(.CPOL(0), .CPHA(1)) potentiometer_1
   .have_msg (have_msg_bus[0]),
   .len      (len_bus[8*0+:8])
 );
+
 assign dac_rst_n = 1'b1; // no hardware reset
 
 
 // addresses 0x01-0x03
-if_spi_multi #(.N_SLAVES(3), .CPOL(0), .CPHA(1)) potentiometers
-(
+if_spi_multi #(
+  .N_SLAVES(3),
+  .CLK_DIV_EVEN(8),
+  .CPOL(0),
+  .CPHA(1),
+  .BYTES_PER_FRAME(2),
+  .BIDIR(0)
+)
+potentiometers (
   .n_rst       (n_rst),
   .clk         (sys_clk),
   .sclk        (sclk_power),
@@ -182,12 +181,19 @@ if_spi_multi #(.N_SLAVES(3), .CPOL(0), .CPHA(1)) potentiometers
   .have_msg_bus(have_msg_bus[3:1]),
   .s_rdreq_bus (rdreq_bus[3:1])
 );
+
 assign rst_power_n = 1'b1;
 
 
 // address 0x04
-if_spi #(.CPOL(1), .CPHA(1)) adc_1
-(
+if_spi #(
+  .CLK_DIV_EVEN(8),
+  .CPOL(1),
+  .CPHA(1),
+  .BYTES_PER_FRAME(2),
+  .BIDIR(0)
+)
+adc_1 (
   .n_rst    (n_rst),
   .clk      (sys_clk),
   .n_cs     (adc_cs_pwr_n),
@@ -204,8 +210,15 @@ if_spi #(.CPOL(1), .CPHA(1)) adc_1
 
 
 // addresses 0x05-0x06
-if_spi_multi #(.N_SLAVES(2), .CPOL(1), .CPHA(1)) adcs
-(
+if_spi_multi #(
+  .N_SLAVES(2),
+  .CLK_DIV_EVEN(8),
+  .CPOL(1),
+  .CPHA(1),
+  .BYTES_PER_FRAME(2),
+  .BIDIR(0)
+)
+adcs (
   .n_rst       (n_rst),
   .clk         (sys_clk),
   .sclk        (adc_sclk),
@@ -222,8 +235,7 @@ if_spi_multi #(.N_SLAVES(2), .CPOL(1), .CPHA(1)) adcs
 
 
 // address 0x07
-if_spi_9952 spi_dds
-(
+if_spi_9952 spi_dds (
   .n_rst    (n_rst),
   .clk      (sys_clk),
   .n_cs     (dds_cs_n),
@@ -237,18 +249,25 @@ if_spi_9952 spi_dds
   .have_msg (have_msg_bus[7]),
   .len      (len_bus[8*7+:8])
 );
+
 assign dds_rst = 0;
 
 
 // address 0x08
-if_spi #(.CPOL(1), .CPHA(0)) spi_bos   // need to know CPHA
-(
+if_spi #(
+  .CLK_DIV_EVEN(8),
+  .CPOL(1),
+  .CPHA(0),
+  .BYTES_PER_FRAME(3),
+  .BIDIR(1),
+  .SWAP_DIR_BIT_NUM(8)
+)
+spi_bos (
   .n_rst    (n_rst),
   .clk      (sys_clk),
   .n_cs     (sl_fpga),
   .sclk     (sck_fpga),
-  .mosi     (sdatai_fpga),
-  .miso     (sdatao_fpga),
+  .sdio     (sdatai_fpga),
   .in_data  (master_data),
   .in_ena   (valid_bus[8]),
   .enc_rdreq(rdreq_bus[8]),
@@ -259,8 +278,7 @@ if_spi #(.CPOL(1), .CPHA(0)) spi_bos   // need to know CPHA
 
 
 // addresses 0x09-0x11
-fpga_regs fpga_regs
-(
+fpga_regs fpga_regs (
   .n_rst              (n_rst),
   .clk                (sys_clk),
   .master_data        (master_data),
@@ -269,7 +287,6 @@ fpga_regs fpga_regs
   .have_msg_bus       ({have_msg_bus[24], have_msg_bus[17:9]}),
   .slave_data_bus     ({slave_data_bus[8*24+:8*1], slave_data_bus[8*9+:8*9]}), // (8 * lowest address) +: (8 * num of addresses)
   .len_bus            ({len_bus[8*24+:8*1], len_bus[8*9+:8*9]}),
-  
   .a                  (a),
   .load_pr_3v7        (load_pr_3v7),
   .load_pdr           (load_pdr),
@@ -286,8 +303,7 @@ fpga_regs fpga_regs
 
 
 // addresses 0x12-0x15
-func_testing func_testing
-(
+func_testing func_testing (
   // internal and system
   .n_rst          (n_rst),
   .sys_clk        (sys_clk),
@@ -302,7 +318,7 @@ func_testing func_testing
   // connect with DAC
   .dac_d        (dac_d),
   // SBIS BOS parallel output
-  .dataclk_fpga (/*dataclk_fpga*/!clk_fpga),
+  .dataclk_fpga (dataclk_fpga),
   .q_fpga       (q_fpga),
   // SBIS BOS - signals related with analog video signal
   .clk_fpga     (clk_fpga),
@@ -313,22 +329,11 @@ func_testing func_testing
   .clpdm_fpga   (clpdm_fpga),
   .clpob_fpga   (clpob_fpga),
   .pblk_fpga    (pblk_fpga)
-  // debug
-  //.my_state     (my_state),
-  //.my_m_wrreq   (my_m_wrreq),
-  //.my_m_used    (my_m_used),
-  //.my_m_rdreq   (my_m_rdreq),
-  //.my_m_q       (my_m_q),
-  //.my_counter   (my_counter),
-  //.my_master_empty(my_master_empty),
-  //.my_outer_cnt (my_outer_cnt)
-  
 );
 
 
 // address 0x16
-keep_alive keep_alive
-(
+keep_alive keep_alive (
   .n_rst    (n_rst),
   .clk      (sys_clk),
   .data     (master_data),
@@ -341,8 +346,7 @@ keep_alive keep_alive
 
 
 
-cmd_decoder cmd_decoder
-(
+cmd_decoder cmd_decoder (
   .n_rst    (n_rst),
   .clk      (sys_clk),
   .rx_data  (rx_data),
@@ -354,8 +358,7 @@ cmd_decoder cmd_decoder
 
 
 
-cmd_encoder cmd_encoder
-(
+cmd_encoder cmd_encoder (
   .n_rst        (n_rst),
   .clk          (sys_clk),
   .have_msg_bus (have_msg_bus),
@@ -369,8 +372,7 @@ cmd_encoder cmd_encoder
 
 
 
-uart uart
-(
+uart uart (
   .clk                (sys_clk),
   .rst                (!n_rst),
   // AXI input
@@ -402,14 +404,5 @@ assign sdram_ras_n = 1'b1;
 assign sdram_cs_n = 1'b1;
 
 
-
-// debug assigns
-//assign my_rx_data = rx_data;
-//assign my_rx_valid = rx_valid;
-//assign my_master_data = master_data;
-//assign my_valid_bus = valid_bus;
-//assign my_tx_data = tx_data;
-//assign my_tx_valid = tx_valid;
-//assign my_have_msg_bus = have_msg_bus;
 
 endmodule

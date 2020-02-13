@@ -1,11 +1,12 @@
+// Be careful, signals, driven by "dds_clk", depend on "state", that is driven by "sys_clk". Probably should reclock "state"
+
 `include "defines.v"
 
-module func_testing
-(
+module func_testing (
   // internal and system
   input       n_rst,
   input       sys_clk,
-  input       dds_clk,
+  input       dds_clk,          // SHP, SHD etc. should be driven with dds_clk
   input [7:0] master_data,
   input [4:0] valid_bus,        // 4 = video samples
   input [4:0] rdreq_bus,        // 3 = (start / stop) and (CCD mode / plain ADC mode)
@@ -26,20 +27,7 @@ module func_testing
   output reg  vd_fpga,
   output reg  clpdm_fpga,
   output      clpob_fpga,
-  output      pblk_fpga,
-  
-  // debug
-  output [2:0] my_state,
-  output my_m_wrreq,
-  output [$clog2(`SIZE)-1:0] my_m_used,
-  output my_m_rdreq,
-  output [15:0] my_m_q,
-  output [8:0]  my_counter,
-  output my_master_empty,
-  output [7:0] my_outer_cnt
-  
-  //output my_s_empty,
-  //output [8:0] my_s_used,
+  output      pblk_fpga
 );
 
 
@@ -150,7 +138,7 @@ always@(posedge sys_clk or negedge n_rst)
 
 reg master_rdreq;
 
-always@(posedge sys_clk or negedge n_rst)
+always@(posedge dds_clk or negedge n_rst)
   if(!n_rst)
     begin
     inner_cnt <= 0;
@@ -231,20 +219,18 @@ wire master_wrreq;
 assign master_wrreq = samples_ena & (state == WR_FROM_PC);
 wire [$clog2(`SIZE)-1:0] used;
 
-fifo_trans_w #
-(
+fifo_trans_w #(
   .SIZE       (`SIZE*2),  // less than 8 doesn't work with parametrized fifo
   .WIDTH_IN   (8),
   .WIDTH_OUT  (16),
   .SHOW_AHEAD ("ON")
 )
-master_fifo
-(
+master_fifo (
   .aclr (!n_rst),
 	.data (master_data),
 	.rdclk(dds_clk),
 	.rdreq(master_rdreq),
-	.wrclk(/*sys_clk*/dds_clk),
+	.wrclk(sys_clk),
 	.wrreq(master_wrreq),
 	
   .q      (master_q),
@@ -257,15 +243,14 @@ wire slave_rdreq; assign slave_rdreq = rdreq_bus[4];
 wire [$clog2(`SIZE)-1:0] slave_used;
 wire [7:0] slave_data;
 
-fifo_trans_w #
-(
+
+fifo_trans_w #(
   .SIZE       (`SIZE),  // less than 8 doesn't work with parametrized fifo
   .WIDTH_IN   (16),
   .WIDTH_OUT  (8),
   .SHOW_AHEAD ("OFF")
 )
-slave_fifo
-(
+slave_fifo (
   .aclr (!n_rst),
 	.data ({4'b0000, q_fpga}),
 	.rdclk(sys_clk),
@@ -296,16 +281,6 @@ assign len_bus[31:0] = 32'b0;
 assign slave_data_bus[39:32] = slave_data;
 assign slave_data_bus[31:0] = 32'b0;
 
-
-// DEBUG ASSIGNS
-assign my_state = state;
-assign my_m_wrreq = master_wrreq;
-assign my_m_used = used;
-assign my_m_rdreq = master_rdreq;
-assign my_m_q = master_q;
-assign my_counter = inner_cnt;
-assign my_master_empty = master_empty;
-assign my_outer_cnt = outer_cnt;
 
 
 endmodule

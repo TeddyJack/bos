@@ -1,5 +1,4 @@
-module keep_alive
-(
+module keep_alive (
   input       n_rst,
   input       clk,
   input [7:0] data,

@@ -1,41 +1,19 @@
 `include "defines.v"
 
-module cmd_decoder(
-input         n_rst,
-input         clk,
-
-input [7:0]   rx_data,
-input         rx_valid,
-output        rx_ready,
-
-output [7:0]  q,
-output [`N_SRC-1:0]  valid_bus
-
-// debug
-//output [2:0]  my_state,
-//output [7:0]  my_dest,
-//output [7:0]  my_len,
-//output [7:0]  my_cnt,
-//output [7:0]  my_crc_calcked,
-//output        my_rdreq,
-//output        my_empty,
-//output        my_rst_timeout,
-//output [31:0] my_cnt_timeout
+module cmd_decoder (
+  input         n_rst,
+  input         clk,
+  
+  input [7:0]   rx_data,
+  input         rx_valid,
+  output        rx_ready,
+  
+  output [7:0]  q,
+  output [`N_SRC-1:0]  valid_bus
 );
-//assign my_state = state;
-//assign my_dest = dest;
-//assign my_len = len;
-//assign my_cnt = cnt;
-//assign my_crc_calcked = crc_calcked;
-//assign my_rdreq = rdreq;
-//assign my_empty = empty;
-//assign my_rst_timeout = rst_timeout;
-//assign my_cnt_timeout = cnt_timeout;
 
 
 assign rx_ready = 1;  // TODO
-
-
 
 
 reg [7:0] dest;
@@ -59,7 +37,7 @@ wire empty;
 wire rdreq = !empty & (state == FORWARD_DATA);
   
 reg [31:0] cnt_timeout;
-localparam [31:0] CNT_LIMIT = 50000000 * `TIMEOUT_MSG / 1000 - 1;
+localparam [31:0] CNT_LIMIT = `SYS_CLK * `TIMEOUT_MSG * 1000 - 1;
 wire rst_timeout = (cnt_timeout == CNT_LIMIT);
 
 
