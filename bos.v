@@ -4,7 +4,7 @@ module bos (
   //// input clocks
   input fpga_clk_100,
 //input fpga_clk_48,    // not used so far; assign to PIN_A8 if used
-//input fpga_clk_dac,   // clk from dds; not used so far; assign to PIN_R9 if used
+  input fpga_clk_dac,   // clk from dds; not used so far; assign to PIN_R9 if used
   
   //// RS-485
   output  tx,
@@ -97,7 +97,6 @@ module bos (
 );
 
 // DEBUG ASSIGNS
-wire fpga_clk_dac = sys_clk;    // since DDS is not used, DDS clk is replaced with sys_clk
 wire dataclk_fpga = !clk_fpga;  // since BOS is not connected, we have to emulate dataclk_fpga somehow
 
 
@@ -123,7 +122,7 @@ wire video_in_sel;
 
 wire n_rst;
 
-assign dac_clk_ext = fpga_clk_dac;
+assign dac_clk_ext = /*fpga_clk_dac*/sys_clk;
 
 pll_main pll_main (
   .inclk0 (fpga_clk_100),
@@ -307,7 +306,7 @@ func_testing func_testing (
   // internal and system
   .n_rst          (n_rst),
   .sys_clk        (sys_clk),
-  .dds_clk        (dac_clk_ext),
+  .dds_clk        (/*fpga_clk_dac*/sys_clk),          // while debug
   .master_data    (master_data),
   .valid_bus      (valid_bus[22:18]),
   .rdreq_bus      (rdreq_bus[22:18]),

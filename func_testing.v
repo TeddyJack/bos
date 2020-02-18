@@ -193,7 +193,7 @@ always@(posedge dds_clk or negedge n_rst)
         begin
         if(outer_cnt == 1'b0)
           clpdm_fpga <= 1;
-        else if((outer_cnt == 8'd246) | master_empty)    // = (256-10), where 10 is blanking len (in pixels)
+        else if((outer_cnt == 8'd246) | (master_empty & !periodical_mode))    // = (256-10), where 10 is blanking len (in pixels)
           clpdm_fpga <= 0;
         end
 
