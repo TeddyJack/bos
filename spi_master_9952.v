@@ -134,7 +134,7 @@ always@(posedge clk or negedge n_rst)
 always@(posedge clk or negedge n_rst)
   if(!n_rst)
     miso_reg <= 0;
-  else if(ena)
+  else if(cnt_ena == QUARTER)
     begin
     miso_reg[0] <= miso;
     miso_reg[7:1] <= miso_reg[6:0];
