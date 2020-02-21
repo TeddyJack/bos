@@ -27,10 +27,12 @@ module func_testing (
   output reg  vd_fpga,
   output reg  clpdm_fpga,
   output      clpob_fpga,
-  output      pblk_fpga
+  output      pblk_fpga,
+  //
+  output [2:0] my_state
 );
 
-
+assign my_state = state;
 
 
 reg [23:0] local_shift_reg;
@@ -159,7 +161,7 @@ always@(posedge dds_clk or negedge n_rst)
       else
         inner_cnt <= 0;
       
-      master_rdreq <= (inner_cnt == (num_reps_x2 - 1'b1)) & (!master_empty) & (!periodical_mode);
+      master_rdreq <= (inner_cnt == HALF) & (!master_empty) & (!periodical_mode);
       
       if(inner_cnt == 1'b0)
         clk_fpga <= 1;
@@ -248,7 +250,7 @@ fifo_trans_w #(
   .SIZE       (`SIZE),  // less than 8 doesn't work with parametrized fifo
   .WIDTH_IN   (16),
   .WIDTH_OUT  (8),
-  .SHOW_AHEAD ("OFF")
+  .SHOW_AHEAD ("ON")
 )
 slave_fifo (
   .aclr (!n_rst),
