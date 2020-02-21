@@ -1,27 +1,30 @@
 module if_spi #(
-  parameter CLK_DIV_EVEN = 8,
-  parameter CPOL = 0,
-  parameter CPHA = 0,
-  parameter BYTES_PER_FRAME = 2,
-  parameter BIDIR = 0,
-  parameter SWAP_DIR_BIT_NUM = 8
+  parameter [0:0] CPOL = 0,
+  parameter [0:0] CPHA = 0,
+  parameter [7:0] BYTES_PER_FRAME = 2,
+  parameter       FIFO_SIZE = 64,
+  parameter       USE_M9K = "ON",
+  parameter [0:0] BIDIR = 0,
+  parameter [7:0] SWAP_DIR_BIT_NUM = 7
 )(
   input n_rst,
-  input clk,
+  input sys_clk,
+  input sclk_common,
   
   output  n_cs,
   output  sclk,
   output  mosi,
   input   miso,
   inout   sdio,
+  output  io_update,
   
-  input [7:0] in_data,
-  input       in_ena,
+  input   [7:0] in_data,
+  input         in_ena,
   
   input         enc_rdreq,
-  output [7:0]  out_data,
+  output  [7:0] out_data,
   output        have_msg,
-  output [7:0]  len
+  output  [7:0] len
 );
 
 
@@ -29,21 +32,19 @@ module if_spi #(
 wire        m_empty;
 wire [7:0]  m_dout;
 wire        m_rdreq;
-wire        m_full;
 wire [7:0]  s_din;
 wire        s_wrreq;
 wire        s_empty;
-wire        s_full;
-wire [5:0]  used;     // since 64 words FIFO used, the width is 6
+wire [$clog2(FIFO_SIZE)-1:0]  s_used;
+
 
 assign have_msg = !s_empty;
-assign len = {2'b00, used};
-wire rst_internal = !n_rst | m_full | s_full;
+assign len[7:$clog2(FIFO_SIZE)] = 0;
+assign len[$clog2(FIFO_SIZE)-1:0] = s_used;
 
 
 
 spi_master_byte #(
-  .CLK_DIV_EVEN     (CLK_DIV_EVEN),
   .CPOL             (CPOL),
   .CPHA             (CPHA),
   .BYTES_PER_FRAME  (BYTES_PER_FRAME),
@@ -51,50 +52,61 @@ spi_master_byte #(
   .SWAP_DIR_BIT_NUM (SWAP_DIR_BIT_NUM)
 )
 spi_master_inst (
-  .sclk     (sclk),
-  .n_cs     (n_cs),
-  .mosi     (mosi),
-  .miso     (miso),
-  .sdio     (sdio),
-  
-  .n_rst    (!rst_internal),
-  .clk      (clk),
-  
-  .empty    (m_empty),
-  .data_i   (m_dout),
+  .n_rst        (n_rst),
+  .sclk         (sclk_common),
+  .miso         (miso),
+  .mosi         (mosi),
+  .n_cs         (n_cs),
+  .sdio         (sdio),
+  .io_update    (io_update),
+  .master_data  (m_dout),
+  .master_empty (m_empty),
+  .master_rdreq (m_rdreq),
+  .miso_reg     (s_din),
+  .slave_wrreq  (s_wrreq)
+);
+
+
+
+dc_fifo #(
+  .SIZE       (FIFO_SIZE),
+  .SHOW_AHEAD ("ON"),
+  .USE_M9K    (USE_M9K)
+)
+fifo_master (
+  .aclr     (!n_rst),
+  .data     (in_data),
+  .rdclk    (sclk_common),
   .rdreq    (m_rdreq),
-  
-  .miso_reg (s_din),
-  .wrreq    (s_wrreq)
+  .wrclk    (sys_clk),
+  .wrreq    (in_ena),
+  .q        (m_dout),
+  .rdempty  (m_empty)
 );
 
 
 
-sc_fifo fifo_master (
-  .aclr (rst_internal),
-  .clock(clk),
-  .data (in_data),
-  .rdreq(m_rdreq),
-  .wrreq(in_ena),
-  .empty(m_empty),
-  .full (m_full),
-  .q    (m_dout)
+dc_fifo #(
+  .SIZE       (FIFO_SIZE),
+  .SHOW_AHEAD ("ON"),
+  .USE_M9K    (USE_M9K)
+)
+fifo_slave (
+  .aclr     (!n_rst),
+  .data     (s_din),
+  .rdclk    (sys_clk),
+  .rdreq    (enc_rdreq),
+  .wrclk    (sclk_common),
+  .wrreq    (s_wrreq),
+  .q        (out_data),
+  .rdempty  (s_empty),
+  .rdusedw  (s_used)
 );
 
 
 
-sc_fifo fifo_slave (
-  .aclr (rst_internal),
-  .clock(clk),
-  .data (s_din),
-  .rdreq(enc_rdreq),
-  .wrreq(s_wrreq),
-  .empty(s_empty),
-  .full (s_full),
-  .q    (out_data),
-  .usedw(used)
-);
+assign sclk = n_cs ? CPOL : sclk_common;
 
 
-  
+
 endmodule

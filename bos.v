@@ -121,37 +121,38 @@ wire [1*`N_SRC-1:0] rdreq_bus;
 wire video_in_sel;
 
 wire n_rst;
+wire sclk_common;
 
 assign dac_clk_ext = /*fpga_clk_dac*/sys_clk;
 
 pll_main pll_main (
   .inclk0 (fpga_clk_100),
   .c0     (sys_clk),
+  .c1     (sclk_common),
   .locked (n_rst)
 );
 
 
 // address 0x00
 if_spi #(
-  .CLK_DIV_EVEN(8),
   .CPOL(0),
   .CPHA(1),
-  .BYTES_PER_FRAME(2),
-  .BIDIR(0)
+  .BYTES_PER_FRAME(2)
 )
 potentiometer_1 (
-  .n_rst    (n_rst),
-  .clk      (sys_clk),
-  .n_cs     (dac_sync_n),
-  .sclk     (dac_sclk),
-  .mosi     (dac_din),
-  .miso     (dac_sdo),
-  .in_data  (master_data),
-  .in_ena   (valid_bus[0]),
-  .enc_rdreq(rdreq_bus[0]),
-  .out_data (slave_data_bus[8*0+:8]),
-  .have_msg (have_msg_bus[0]),
-  .len      (len_bus[8*0+:8])
+  .n_rst      (n_rst),
+  .sys_clk    (sys_clk),
+  .sclk_common(sclk_common),
+  .n_cs       (dac_sync_n),
+  .sclk       (dac_sclk),
+  .mosi       (dac_din),
+  .miso       (dac_sdo),
+  .in_data    (master_data),
+  .in_ena     (valid_bus[0]),
+  .enc_rdreq  (rdreq_bus[0]),
+  .out_data   (slave_data_bus[8*0+:8]),
+  .have_msg   (have_msg_bus[0]),
+  .len        (len_bus[8*0+:8])
 );
 
 assign dac_rst_n = 1'b1; // no hardware reset
@@ -160,15 +161,14 @@ assign dac_rst_n = 1'b1; // no hardware reset
 // addresses 0x01-0x03
 if_spi_multi #(
   .N_SLAVES(3),
-  .CLK_DIV_EVEN(8),
   .CPOL(0),
   .CPHA(1),
-  .BYTES_PER_FRAME(2),
-  .BIDIR(0)
+  .BYTES_PER_FRAME(2)
 )
 potentiometers (
   .n_rst       (n_rst),
-  .clk         (sys_clk),
+  .sys_clk     (sys_clk),
+  .sclk_common (sclk_common),
   .sclk        (sclk_power),
   .mosi        (din_power),
   .miso        (),
@@ -186,40 +186,38 @@ assign rst_power_n = 1'b1;
 
 // address 0x04
 if_spi #(
-  .CLK_DIV_EVEN(8),
   .CPOL(1),
   .CPHA(1),
-  .BYTES_PER_FRAME(2),
-  .BIDIR(0)
+  .BYTES_PER_FRAME(2)
 )
 adc_1 (
-  .n_rst    (n_rst),
-  .clk      (sys_clk),
-  .n_cs     (adc_cs_pwr_n),
-  .sclk     (adc_sclk_pwr),
-  .mosi     (adc_din_pwr),
-  .miso     (adc_dout_pwr),
-  .in_data  (master_data),
-  .in_ena   (valid_bus[4]),
-  .enc_rdreq(rdreq_bus[4]),
-  .out_data (slave_data_bus[8*4+:8]),
-  .have_msg (have_msg_bus[4]),
-  .len      (len_bus[8*4+:8])
+  .n_rst      (n_rst),
+  .sys_clk    (sys_clk),
+  .sclk_common(sclk_common),
+  .n_cs       (adc_cs_pwr_n),
+  .sclk       (adc_sclk_pwr),
+  .mosi       (adc_din_pwr),
+  .miso       (adc_dout_pwr),
+  .in_data    (master_data),
+  .in_ena     (valid_bus[4]),
+  .enc_rdreq  (rdreq_bus[4]),
+  .out_data   (slave_data_bus[8*4+:8]),
+  .have_msg   (have_msg_bus[4]),
+  .len        (len_bus[8*4+:8])
 );
 
 
 // addresses 0x05-0x06
 if_spi_multi #(
   .N_SLAVES(2),
-  .CLK_DIV_EVEN(8),
   .CPOL(1),
   .CPHA(1),
-  .BYTES_PER_FRAME(2),
-  .BIDIR(0)
+  .BYTES_PER_FRAME(2)
 )
 adcs (
   .n_rst       (n_rst),
-  .clk         (sys_clk),
+  .sys_clk     (sys_clk),
+  .sclk_common (sclk_common),
   .sclk        (adc_sclk),
   .mosi        (adc_din),
   .miso        (adc_dout),
@@ -234,19 +232,27 @@ adcs (
 
 
 // address 0x07
-if_spi_9952 spi_dds (
-  .n_rst    (n_rst),
-  .clk      (sys_clk),
-  .n_cs     (dds_cs_n),
-  .sclk     (dds_sclk),
-  .sdio     (dds_sdio),
-  .io_update(dds_io_upd),
-  .in_data  (master_data),
-  .in_ena   (valid_bus[7]),
-  .enc_rdreq(rdreq_bus[7]),
-  .out_data (slave_data_bus[8*7+:8]),
-  .have_msg (have_msg_bus[7]),
-  .len      (len_bus[8*7+:8])
+if_spi #(
+  .CPOL(0),
+  .CPHA(0),
+  .BYTES_PER_FRAME(0),
+  .BIDIR(1),
+  .SWAP_DIR_BIT_NUM(7)
+)
+spi_dds (
+  .n_rst      (n_rst),
+  .sys_clk    (sys_clk),
+  .sclk_common(sclk_common),
+  .n_cs       (dds_cs_n),
+  .sclk       (dds_sclk),
+  .sdio       (dds_sdio),
+  .io_update  (dds_io_upd),
+  .in_data    (master_data),
+  .in_ena     (valid_bus[7]),
+  .enc_rdreq  (rdreq_bus[7]),
+  .out_data   (slave_data_bus[8*7+:8]),
+  .have_msg   (have_msg_bus[7]),
+  .len        (len_bus[8*7+:8])
 );
 
 assign dds_rst = 0;
@@ -254,7 +260,6 @@ assign dds_rst = 0;
 
 // address 0x08
 if_spi #(
-  .CLK_DIV_EVEN(8),
   .CPOL(1),
   .CPHA(0),
   .BYTES_PER_FRAME(3),
@@ -262,17 +267,18 @@ if_spi #(
   .SWAP_DIR_BIT_NUM(8)
 )
 spi_bos (
-  .n_rst    (n_rst),
-  .clk      (sys_clk),
-  .n_cs     (sl_fpga),
-  .sclk     (sck_fpga),
-  .sdio     (sdatai_fpga),
-  .in_data  (master_data),
-  .in_ena   (valid_bus[8]),
-  .enc_rdreq(rdreq_bus[8]),
-  .out_data (slave_data_bus[8*8+:8]),
-  .have_msg (have_msg_bus[8]),
-  .len      (len_bus[8*8+:8])
+  .n_rst      (n_rst),
+  .sys_clk    (sys_clk),
+  .sclk_common(sclk_common),
+  .n_cs       (sl_fpga),
+  .sclk       (sck_fpga),
+  .sdio       (sdatai_fpga),
+  .in_data    (master_data),
+  .in_ena     (valid_bus[8]),
+  .enc_rdreq  (rdreq_bus[8]),
+  .out_data   (slave_data_bus[8*8+:8]),
+  .have_msg   (have_msg_bus[8]),
+  .len        (len_bus[8*8+:8])
 );
 
 
