@@ -42,7 +42,7 @@ always@(posedge sys_clk or negedge n_rst)
     video_in_select <= 0;
     hd_fpga         <= 0;
     vd_fpga         <= 0;
-    local_shift_reg <= 0;
+    local_shift_reg <= 24'h040000;
     end
   else
     begin
@@ -154,19 +154,19 @@ always@(posedge dds_clk or negedge n_rst)
     end
   else
     begin
+    if(inner_cnt < (num_reps_x2 - 1'b1))
+      inner_cnt <= inner_cnt + 1'b1;
+    else
+      inner_cnt <= 0;
+    
+    if(inner_cnt == 1'b0)
+      clk_fpga <= 1;
+    else if(inner_cnt == HALF)
+      clk_fpga <= 0;
+    
     if(state == RD_TO_DAC)
       begin
-      if(inner_cnt < (num_reps_x2 - 1'b1))
-        inner_cnt <= inner_cnt + 1'b1;
-      else
-        inner_cnt <= 0;
-      
       master_rdreq <= (inner_cnt == HALF) & (!master_empty) & (!periodical_mode);
-      
-      if(inner_cnt == 1'b0)
-        clk_fpga <= 1;
-      else if(inner_cnt == HALF)
-        clk_fpga <= 0;
         
       if(ccd_or_plain)
         dac_d <= master_q[13:0];
@@ -202,10 +202,8 @@ always@(posedge dds_clk or negedge n_rst)
       end
     else
       begin
-      inner_cnt <= 0;
       shp_fpga <= 1;
       shd_fpga <= 1;
-      clk_fpga <= 1;
       outer_cnt <= 0;
       clpdm_fpga <= 0;
       end
