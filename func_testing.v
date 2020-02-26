@@ -256,7 +256,7 @@ slave_fifo (
 	.rdclk(sys_clk),
 	.rdreq(slave_rdreq),
 	.wrclk(dataclk_fpga),
-	.wrreq(state == RD_TO_DAC),   // be careful, state is driven by sys_clk, but expected by wrclk
+	.wrreq((state == RD_TO_DAC) & (!periodical_mode)),   // be careful, state is driven by sys_clk, but expected by wrclk
 	
   .q      (slave_data),
 	.rdempty(slave_empty),
