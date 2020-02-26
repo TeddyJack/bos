@@ -55,15 +55,15 @@ module bos (
   output        functional,           // off/on level translators
   
   //// RAM
-  output [12:0] sdram_a,
-  output [1:0]  sdram_ba,     // bank address
-  inout  [15:0] sdram_dq,     // data i/o
-  output        sdram_clk,
-  output        sdram_cke,    // clock enable
-  output        sdram_we_n,   // write_enable
-  output        sdram_cas_n,  // column address strobe command
-  output        sdram_ras_n,  // row address strobe command
-  output        sdram_cs_n,   // chip select
+  //output [12:0] sdram_a,
+  //output [1:0]  sdram_ba,     // bank address
+  //inout  [15:0] sdram_dq,     // data i/o
+  //output        sdram_clk,
+  //output        sdram_cke,    // clock enable
+  //output        sdram_we_n,   // write_enable
+  //output        sdram_cas_n,  // column address strobe command
+  //output        sdram_ras_n,  // row address strobe command
+  //output        sdram_cs_n,   // chip select
   
   //// DAC
   output [13:0] dac_d,
@@ -88,7 +88,7 @@ module bos (
 //input         sdatao_fpga,  // SPI control - miso, not used so far; assign to PIN_B7 if used
   output        sck_fpga,     // SPI control - sclk
   //
-  //input         dataclk_fpga, // delayed clk_fpga
+  input         dataclk_fpga, // delayed clk_fpga
   input  [11:0] q_fpga,       // parallel video data from sbis bos
   //
   output        slv_fpga,     // serial video - cs      
@@ -96,8 +96,6 @@ module bos (
   input         sdatav_fpga   // serial video - miso
 );
 
-// DEBUG ASSIGNS
-wire dataclk_fpga = !clk_fpga;  // since BOS is not connected, we have to emulate dataclk_fpga somehow
 
 
 wire sys_clk;
@@ -394,19 +392,6 @@ uart uart (
   // Configuration
   .prescale           (PRESCALE[15:0])
 );
-
-
-
-// RAM is not used in this implementation
-assign sdram_a = 13'b0;
-assign sdram_ba = 2'b0;
-assign sdram_dq = 16'bz;
-assign sdram_clk = 1'b0;
-assign sdram_cke = 1'b0;
-assign sdram_we_n = 1'b1;
-assign sdram_cas_n = 1'b1;
-assign sdram_ras_n = 1'b1;
-assign sdram_cs_n = 1'b1;
 
 
 
