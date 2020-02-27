@@ -4,6 +4,7 @@ module spi_master_byte #(
   parameter [0:0] CPOL = 0,
   parameter [0:0] CPHA = 0,
   parameter [7:0] BYTES_PER_FRAME = 2,
+  parameter [2:0] PAUSE = 7,
   parameter [0:0] BIDIR = 1,
   parameter [7:0] SWAP_DIR_BIT_NUM = 7
 )(
@@ -32,8 +33,9 @@ reg [7:0] mosi_reg;
 assign mosi_int = mosi_reg[7];
 reg [2:0] bit_cnt;
 reg [7:0] byte_cnt;
+reg [2:0] pause_cnt;
 
-wire load_condition = n_cs ? !master_empty : &bit_cnt & !((byte_cnt == BYTES_PER_FRAME - 8'd1) | master_empty);
+wire load_condition = n_cs ? !(master_empty | (pause_cnt != (PAUSE - 3'd1))) : &bit_cnt & !((byte_cnt == BYTES_PER_FRAME - 8'd1) | master_empty);
 wire eoframe_condition = &bit_cnt & ((byte_cnt == BYTES_PER_FRAME - 8'd1) | master_empty);
 
 
@@ -47,12 +49,13 @@ generate
         master_rdreq <= 0;
         byte_cnt <= 0;
         mosi_reg <= 0;
+        pause_cnt <= 0;
         end
       else
         begin
         if(n_cs)
           begin
-          n_cs <= master_empty;
+          n_cs <= master_empty | (pause_cnt != (PAUSE - 3'd1));
           bit_cnt <= 0;
           byte_cnt <= 0;
           end
@@ -70,6 +73,11 @@ generate
           mosi_reg <= master_data;
         else
           mosi_reg <= mosi_reg << 1;
+          
+        if(eoframe_condition)
+          pause_cnt <= 0;
+        else if(pause_cnt != (PAUSE - 3'd1))
+          pause_cnt <= pause_cnt + 1'b1;
         end
   else
     always@(negedge sclk or negedge n_rst)
@@ -80,12 +88,13 @@ generate
         master_rdreq <= 0;
         byte_cnt <= 0;
         mosi_reg <= 0;
+        pause_cnt <= 0;
         end
       else
         begin
         if(n_cs)
           begin
-          n_cs <= master_empty;
+          n_cs <= master_empty | (pause_cnt != (PAUSE - 3'd1));
           bit_cnt <= 0;
           byte_cnt <= 0;
           end
@@ -103,6 +112,11 @@ generate
           mosi_reg <= master_data;
         else
           mosi_reg <= mosi_reg << 1;
+          
+        if(eoframe_condition)
+          pause_cnt <= 0;
+        else if(pause_cnt != (PAUSE - 3'd1))
+          pause_cnt <= pause_cnt + 1'b1;
         end
 endgenerate
 
