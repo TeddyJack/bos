@@ -93,9 +93,8 @@ module bos (
   //
   output        slv_fpga,     // serial video - cs      
   output        sckv_fpga,    // serial video - sclk
-  input         sdatav_fpga   // serial video - miso
+  inout         sdatav_fpga   // serial video - sdio
 );
-
 
 
 wire sys_clk;
@@ -120,6 +119,7 @@ wire video_in_sel;
 
 wire n_rst;
 wire sclk_common;
+wire sclk_video;
 
 assign dac_clk_ext = /*fpga_clk_dac*/sys_clk;
 
@@ -127,6 +127,7 @@ pll_main pll_main (
   .inclk0 (fpga_clk_100),
   .c0     (sys_clk),
   .c1     (sclk_common),
+  .c2     (sclk_video),
   .locked (n_rst)
 );
 
@@ -310,7 +311,7 @@ func_testing func_testing (
   // internal and system
   .n_rst          (n_rst),
   .sys_clk        (sys_clk),
-  .dds_clk        (/*fpga_clk_dac*/sys_clk),          // while debug
+  .dds_clk        (/*fpga_clk_dac*/sys_clk),          // fpga_clk_dac not used so far
   .master_data    (master_data),
   .valid_bus      (valid_bus[22:18]),
   .rdreq_bus      (rdreq_bus[22:18]),
@@ -321,8 +322,8 @@ func_testing func_testing (
   // connect with DAC
   .dac_d        (dac_d),
   // SBIS BOS parallel output
-  .dataclk_fpga (/*dataclk_fpga*/!clk_fpga),          // while debug
-  .q_fpga       (q_fpga),
+  .dataclk_fpga (dataclk_fpga),
+  .q_fpga       (video_in),
   // SBIS BOS - signals related with analog video signal
   .clk_fpga     (clk_fpga),
   .shp_fpga     (shp_fpga),
@@ -392,6 +393,25 @@ uart uart (
   // Configuration
   .prescale           (PRESCALE[15:0])
 );
+
+
+
+video_spi video_spi (
+  .n_rst (n_rst),
+  .sclk_full (sclk_video),
+  .enable (video_in_sel),
+  
+  .parall_data (data_video_spi),
+  
+  .sdatav_fpga (sdatav_fpga),
+  .slv_fpga (slv_fpga),
+  .sckv_fpga (sckv_fpga)
+  
+  
+);
+
+wire [11:0] data_video_spi;
+wire [11:0] video_in = video_in_sel ? data_video_spi : q_fpga;
 
 
 
