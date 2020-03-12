@@ -105,7 +105,8 @@ fifo_slave (
 
 
 
-assign sclk = n_cs ? CPOL : sclk_common;
+//assign sclk = n_cs ? CPOL : sclk_common;    // causes clocking issues
+assign sclk = sclk_common;
 
 
 

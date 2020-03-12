@@ -88,7 +88,7 @@ module bos (
 //input         sdatao_fpga,  // SPI control - miso, not used so far; assign to PIN_B7 if used
   output        sck_fpga,     // SPI control - sclk
   //
-  input         dataclk_fpga, // delayed clk_fpga
+  //input         dataclk_fpga, // delayed clk_fpga
   input  [11:0] q_fpga,       // parallel video data from sbis bos
   //
   output        slv_fpga,     // serial video - cs      
@@ -96,7 +96,7 @@ module bos (
   inout         sdatav_fpga   // serial video - sdio
 );
 
-
+wire dataclk_fpga = !clk_fpga;
 wire sys_clk;
 
 wire [7:0]        master_data;
@@ -117,7 +117,9 @@ wire [1*`N_SRC-1:0] rdreq_bus;
 
 wire video_in_sel;
 
-wire n_rst;
+wire n_rst_pll;
+wire n_rst_ext;
+wire n_rst = n_rst_pll & n_rst_ext;
 wire sclk_common;
 wire sclk_video;
 
@@ -128,7 +130,7 @@ pll_main pll_main (
   .c0     (sys_clk),
   .c1     (sclk_common),
   .c2     (sclk_video),
-  .locked (n_rst)
+  .locked (n_rst_pll)
 );
 
 
@@ -345,7 +347,8 @@ keep_alive keep_alive (
   .have_msg (have_msg_bus[23]),
   .rdreq    (rdreq_bus[23]),
   .data_out (slave_data_bus[8*23+:8]),
-  .len      (len_bus[8*23+:8])
+  .len      (len_bus[8*23+:8]),
+  .n_rst_ext(n_rst_ext)
 );
 
 

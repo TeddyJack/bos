@@ -217,7 +217,7 @@ always@(posedge dds_clk or negedge n_rst)
 
 wire master_wrreq;
 assign master_wrreq = samples_ena & (state == WR_FROM_PC);
-wire [$clog2(`SIZE*2)-1:0] used;
+wire [$clog2(`SIZE)-1:0] used;
 
 fifo_trans_w #(
   .SIZE       (`SIZE*2),  // less than 8 doesn't work with parametrized fifo
@@ -240,7 +240,7 @@ master_fifo (
 );
 
 wire slave_rdreq; assign slave_rdreq = rdreq_bus[4];
-wire [$clog2(`SIZE)-1:0] slave_used;
+wire [$clog2(`SIZE*2)-1:0] slave_used;
 wire [7:0] slave_data;
 
 
