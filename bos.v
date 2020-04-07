@@ -102,7 +102,7 @@ wire sys_clk;
 wire [7:0]        master_data;
 wire [`N_SRC-1:0] valid_bus;
 
-localparam PRESCALE = `SYS_CLK * 10000 / (1152 * 8);	// = fclk / (baud * 8)
+localparam PRESCALE = `SYS_CLK * 10000 / (2304 * 8);	// = fclk / (baud * 8)
 wire [7:0]  rx_data;
 wire        rx_valid;
 wire        tx_ready;

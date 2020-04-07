@@ -40,7 +40,7 @@ always@(posedge clk or negedge n_rst)
     functional          <= 0;
     off_vcore_fpga      <= 1;
     off_vdigital_fpga   <= 1;
-    rst_fpga            <= 1;
+    rst_fpga            <= 0;
     stby_fpga           <= 0;
     end
   else
