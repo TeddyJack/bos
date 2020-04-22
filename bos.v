@@ -88,7 +88,7 @@ module bos (
 //input         sdatao_fpga,  // SPI control - miso, not used so far; assign to PIN_B7 if used
   output        sck_fpga,     // SPI control - sclk
   //
-  //input         dataclk_fpga, // delayed clk_fpga
+  input         dataclk_fpga, // delayed clk_fpga
   input  [11:0] q_fpga,       // parallel video data from sbis bos
   //
   output        slv_fpga,     // serial video - cs      
@@ -96,7 +96,6 @@ module bos (
   inout         sdatav_fpga   // serial video - sdio
 );
 
-wire dataclk_fpga = !clk_fpga;
 wire sys_clk;
 
 wire [7:0]        master_data;
@@ -262,7 +261,7 @@ assign dds_rst = 0;
 // address 0x08
 if_spi #(
   .CPOL(1),
-  .CPHA(0),
+  .CPHA(1),
   .BYTES_PER_FRAME(3),
   .BIDIR(1),
   .SWAP_DIR_BIT_NUM(8)

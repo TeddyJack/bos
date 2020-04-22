@@ -130,8 +130,13 @@ endgenerate
 
 
 
-//assign sclk = n_cs ? CPOL : sclk_common;    // causes clocking issues
-assign sclk = sclk_common;
+assign sclk = n_cs ? CPOL : ((CPOL == CPHA) ? sclk_mid : !sclk_mid);
+wire sclk_mid;
+
+LCELL lcell_inst (
+  .in (sclk_common),
+  .out (sclk_mid)
+);
 
 
 
