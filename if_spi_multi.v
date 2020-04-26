@@ -67,7 +67,8 @@ spi_master_byte #(
 )
 spi_master_inst (
   .n_rst        (n_rst),
-  .sclk         (sclk_common),
+  .sys_clk      (sclk_common),
+  .sclk         (sclk),
   .mosi         (mosi),
   .miso         (miso),
   .n_cs         (n_cs),
@@ -127,16 +128,6 @@ generate for(i=0; i<N_SLAVES; i=i+1)
   assign len_bus[8*i+7:8*i+$clog2(FIFO_SIZE)] = 0; // fill with zeros
   end
 endgenerate
-
-
-
-assign sclk = n_cs ? CPOL : ((CPOL == CPHA) ? sclk_mid : !sclk_mid);
-wire sclk_mid;
-
-LCELL lcell_inst (
-  .in (sclk_common),
-  .out (sclk_mid)
-);
 
 
 

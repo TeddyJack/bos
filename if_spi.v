@@ -53,7 +53,8 @@ spi_master_byte #(
 )
 spi_master_inst (
   .n_rst        (n_rst),
-  .sclk         (sclk_common),
+  .sys_clk      (sclk_common),
+  .sclk         (sclk),
   .miso         (miso),
   .mosi         (mosi),
   .n_cs         (n_cs),
@@ -101,16 +102,6 @@ fifo_slave (
   .q        (out_data),
   .rdempty  (s_empty),
   .rdusedw  (s_used)
-);
-
-
-
-assign sclk = n_cs ? CPOL : ((CPOL == CPHA) ? sclk_mid : !sclk_mid);
-wire sclk_mid;
-
-LCELL lcell_inst (
-  .in (sclk_common),
-  .out (sclk_mid)
 );
 
 

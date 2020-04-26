@@ -85,7 +85,7 @@ module bos (
   //
   output        sl_fpga,      // SPI control - cs
   inout         sdatai_fpga,  // SPI control - sdio
-//input         sdatao_fpga,  // SPI control - miso, not used so far; assign to PIN_B7 if used
+  input         sdatao_fpga,  // SPI control - miso
   output        sck_fpga,     // SPI control - sclk
   //
   input         dataclk_fpga, // delayed clk_fpga
@@ -261,9 +261,9 @@ assign dds_rst = 0;
 // address 0x08
 if_spi #(
   .CPOL(1),
-  .CPHA(1),
+  .CPHA(0),
   .BYTES_PER_FRAME(3),
-  .BIDIR(1),
+  .BIDIR(0),
   .SWAP_DIR_BIT_NUM(8)
 )
 spi_bos (
@@ -272,7 +272,8 @@ spi_bos (
   .sclk_common(sclk_common),
   .n_cs       (sl_fpga),
   .sclk       (sck_fpga),
-  .sdio       (sdatai_fpga),
+  .mosi       (sdatai_fpga),
+  .miso       (sdatao_fpga),
   .in_data    (master_data),
   .in_ena     (valid_bus[8]),
   .enc_rdreq  (rdreq_bus[8]),
