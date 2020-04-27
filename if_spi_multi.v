@@ -83,7 +83,7 @@ spi_master_inst (
 
 
 
-always@(posedge sys_clk or negedge n_rst)
+always@(posedge sclk_common or negedge n_rst)
 if(!n_rst)
   select <= 0;
 else
