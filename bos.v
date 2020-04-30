@@ -264,7 +264,8 @@ if_spi #(
   .CPHA(0),
   .BYTES_PER_FRAME(3),
   .BIDIR(0),
-  .SWAP_DIR_BIT_NUM(8)
+  .SWAP_DIR_BIT_NUM(8),
+  .SCLK_CONST(1)
 )
 spi_bos (
   .n_rst      (n_rst),

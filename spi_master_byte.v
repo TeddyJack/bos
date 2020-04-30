@@ -6,7 +6,8 @@ module spi_master_byte #(
   parameter [7:0] BYTES_PER_FRAME = 3,
   parameter [2:0] PAUSE = 4,
   parameter [0:0] BIDIR = 1,
-  parameter [7:0] SWAP_DIR_BIT_NUM = 7    // after which bit (count from 0) high_z sets to "1"
+  parameter [7:0] SWAP_DIR_BIT_NUM = 7,   // after which bit (count from 0) high_z sets to "1"
+  parameter [0:0] SCLK_CONST = 0
 )(
   input n_rst,
   
@@ -27,20 +28,24 @@ module spi_master_byte #(
 );
 
 
-wire mosi_int;
-wire miso_int;
 
 reg [7:0] mosi_reg;
-assign mosi_int = mosi_reg[7];
 reg [2:0] bit_cnt;
 reg [7:0] byte_cnt;
 reg n_cs_neg; // n_cs, clocked always on negedge
 reg n_cs_pha; // n_cs, clocked on edge depending (CPOL == CPHA)
+wire miso_int;
+wire mosi_int = mosi_reg[7];
 wire load_cond = (bit_cnt == 1'b0) & !master_empty & ((n_cs_pha) | (byte_cnt != 1'b0));
 wire eoframe_cond = (bit_cnt == 1'b0) & (byte_cnt == 1'b0 | master_empty);
-
-assign sclk = n_cs_neg ? CPOL : (CPOL ? !sys_clk : sys_clk);
 assign n_cs = n_cs_neg & n_cs_pha;
+
+generate
+  if(SCLK_CONST)
+    assign sclk = CPOL ? !sys_clk : sys_clk;
+  else
+    assign sclk = n_cs_neg ? CPOL : (CPOL ? !sys_clk : sys_clk);
+endgenerate
 
 
 

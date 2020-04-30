@@ -6,7 +6,8 @@ module if_spi_multi #(
   parameter       FIFO_SIZE = 64,
   parameter       USE_M9K = "ON",
   parameter [0:0] BIDIR = 0,
-  parameter [7:0] SWAP_DIR_BIT_NUM = 7
+  parameter [7:0] SWAP_DIR_BIT_NUM = 7,
+  parameter [0:0] SCLK_CONST = 0
 )(
   input                     n_rst,
   input                     sys_clk,
@@ -63,7 +64,8 @@ spi_master_byte #(
   .CPHA             (CPHA),
   .BYTES_PER_FRAME  (BYTES_PER_FRAME),
   .BIDIR            (BIDIR),
-  .SWAP_DIR_BIT_NUM (SWAP_DIR_BIT_NUM)
+  .SWAP_DIR_BIT_NUM (SWAP_DIR_BIT_NUM),
+  .SCLK_CONST       (SCLK_CONST)
 )
 spi_master_inst (
   .n_rst        (n_rst),
