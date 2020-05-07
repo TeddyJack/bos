@@ -69,6 +69,7 @@ wire [5:0] ONE_EIGHTH = num_reps_x2[8:3];
 wire ctrl_ena; assign ctrl_ena = valid_bus[3];
 wire samples_ena; assign samples_ena = valid_bus[4];
 reg ccd_or_plain;
+reg no_repeats;
 wire [15:0] master_q;
 wire master_empty;
 wire slave_empty;
@@ -88,6 +89,7 @@ always@(posedge sys_clk or negedge n_rst)
     state <= IDLE;
     ccd_or_plain <= 0;
     periodical_mode <= 0;
+    no_repeats <= 0;
     end
   else
     case(state)
@@ -99,6 +101,7 @@ always@(posedge sys_clk or negedge n_rst)
           begin
           state <= WR_FROM_PC;
           ccd_or_plain <= master_data[0];
+          no_repeats <= master_data[1];
           end
         else if(master_data == 8'hB0)
           begin
@@ -166,7 +169,7 @@ always@(posedge dds_clk or negedge n_rst)
     
     if(state == RD_TO_DAC)
       begin
-      master_rdreq <= (inner_cnt == HALF) & (!master_empty) & (!periodical_mode);
+      master_rdreq <= ((inner_cnt == HALF) | no_repeats) & (!master_empty) & (!periodical_mode);
         
       if(ccd_or_plain)
         dac_d <= master_q[13:0];
@@ -255,7 +258,7 @@ slave_fifo (
 	.data ({4'b0000, q_fpga}),
 	.rdclk(sys_clk),
 	.rdreq(slave_rdreq),
-	.wrclk(dataclk_fpga),
+	.wrclk(!dataclk_fpga),
 	.wrreq((state == RD_TO_DAC) & (!periodical_mode)),   // be careful, state is driven by sys_clk, but expected by wrclk
 	
   .q      (slave_data),
