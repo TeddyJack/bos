@@ -124,6 +124,8 @@ wire sclk_video;
 
 assign dac_clk_ext = /*fpga_clk_dac*/sys_clk;
 
+wire ena_clpdm;
+
 pll_main pll_main (
   .inclk0 (fpga_clk_100),
   .c0     (sys_clk),
@@ -305,7 +307,8 @@ fpga_regs fpga_regs (
   .off_vcore_fpga     (off_vcore_fpga),
   .off_vdigital_fpga  (off_vdigital_fpga),
   .rst_fpga           (rst_fpga),
-  .stby_fpga          (stby_fpga)
+  .stby_fpga          (stby_fpga),
+  .ena_clpdm          (ena_clpdm)
 );
 
 
@@ -335,7 +338,9 @@ func_testing func_testing (
   .vd_fpga      (vd_fpga),
   .clpdm_fpga   (clpdm_fpga),
   .clpob_fpga   (clpob_fpga),
-  .pblk_fpga    (pblk_fpga)
+  .pblk_fpga    (pblk_fpga),
+  
+  .ena_clpdm    (ena_clpdm)
 );
 
 

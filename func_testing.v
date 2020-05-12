@@ -25,10 +25,11 @@ module func_testing (
   output reg  shd_fpga,
   output reg  hd_fpga,
   output reg  vd_fpga,
-  output reg  clpdm_fpga,
+  output      clpdm_fpga,
   output      clpob_fpga,
   output      pblk_fpga,
   //
+  input       ena_clpdm,
   output [2:0] my_state
 );
 
@@ -82,6 +83,7 @@ localparam [2:0] RD_TO_PC     = 3'h4;
 reg [8:0] inner_cnt;  // counts repetitions
 reg [7:0] outer_cnt;  // to count samples 0 to 255
 reg periodical_mode;
+reg clpdm_reg;
 
 always@(posedge sys_clk or negedge n_rst)
   if(!n_rst)
@@ -153,7 +155,7 @@ always@(posedge dds_clk or negedge n_rst)
     shd_fpga <= 0;
     clk_fpga <= 0;
     outer_cnt <= 0;
-    clpdm_fpga <= 0;
+    clpdm_reg <= 0;
     end
   else
     begin
@@ -197,9 +199,9 @@ always@(posedge dds_clk or negedge n_rst)
       if(inner_cnt == 1'b0)
         begin
         if(outer_cnt == 1'b0)
-          clpdm_fpga <= 1;
+          clpdm_reg <= 1;
         else if((outer_cnt == 8'd246) | (master_empty & !periodical_mode))    // = (256-10), where 10 is blanking len (in pixels)
-          clpdm_fpga <= 0;
+          clpdm_reg <= 0;
         end
 
       end
@@ -208,7 +210,7 @@ always@(posedge dds_clk or negedge n_rst)
       shp_fpga <= 1;
       shd_fpga <= 1;
       outer_cnt <= 0;
-      clpdm_fpga <= 0;
+      clpdm_reg <= 0;
       end
 
     end
@@ -276,6 +278,7 @@ assign have_msg_bus[3] = 1'b0;
 assign have_msg_bus[4] = !slave_empty & (state == RD_TO_PC);
 
 assign pblk_fpga = 1'b0;
+assign clpdm_fpga = !ena_clpdm | clpdm_reg;
 assign clpob_fpga = clpdm_fpga;
 
 assign len_bus[39:32] = (slave_used > 8'd255) ? 8'd255 : slave_used[7:0];

@@ -20,7 +20,8 @@ module fpga_regs (
   output reg       off_vcore_fpga,       // off/on v_core
   output reg       off_vdigital_fpga,    // off_on v_digital
   output reg       rst_fpga,
-  output reg       stby_fpga
+  output reg       stby_fpga,
+  output reg       ena_clpdm
 );
 
 assign have_msg_bus = 10'b0;
@@ -42,6 +43,7 @@ always@(posedge clk or negedge n_rst)
     off_vdigital_fpga   <= 1;
     rst_fpga            <= 0;
     stby_fpga           <= 0;
+    ena_clpdm           <= 0;
     end
   else
     begin
@@ -58,6 +60,7 @@ always@(posedge clk or negedge n_rst)
     if(valid_bus[7]) off_vcore_fpga      <= master_data[0];
     if(valid_bus[8]) off_vdigital_fpga   <= master_data[0];
     if(valid_bus[9]) begin
+                     ena_clpdm           <= master_data[2];
                      stby_fpga           <= master_data[1];
                      rst_fpga            <= master_data[0];
                      end
