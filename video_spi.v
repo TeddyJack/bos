@@ -7,7 +7,9 @@ module video_spi (
   
   inout             sdatav_fpga,
   output            slv_fpga,
-  output            sckv_fpga
+  output            sckv_fpga,
+  
+  input             dataclk_fpga
 );
 
 
@@ -28,7 +30,7 @@ spi_master_reg (
   .n_cs (slv_fpga),
   .sdio (sdatav_fpga),
   .in_data ({1'b1,23'b0}),
-  .in_ena (enable),
+  .in_ena (enable & rising_dataclk),
   .busy (),
   .miso_reg (miso_reg),
   .miso_reg_ena (miso_reg_ena)
@@ -45,6 +47,23 @@ always@(posedge sclk_full or negedge n_rst)
   else
     if(miso_reg_ena)
       parall_data <= miso_reg[11:0];
+
+
+reg rising_dataclk;
+reg delayed_dataclk;
+always @ (posedge sclk_full or negedge n_rst)
+  if (!n_rst)
+    begin
+    rising_dataclk <= 0;
+    delayed_dataclk <= 0;
+    end
+  else
+    begin
+    delayed_dataclk <= dataclk_fpga;
+    rising_dataclk <= dataclk_fpga & !delayed_dataclk;
+    end
+    
+
 
 
 

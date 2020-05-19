@@ -414,9 +414,9 @@ video_spi video_spi (
   
   .sdatav_fpga (sdatav_fpga),
   .slv_fpga (slv_fpga),
-  .sckv_fpga (sckv_fpga)
+  .sckv_fpga (sckv_fpga),
   
-  
+  .dataclk_fpga (dataclk_fpga)
 );
 
 wire [11:0] data_video_spi;
