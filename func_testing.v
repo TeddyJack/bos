@@ -30,6 +30,7 @@ module func_testing (
   output      pblk_fpga,
   //
   input       ena_clpdm,
+  input       ena_clpob,
   output [2:0] my_state
 );
 
@@ -277,9 +278,9 @@ assign have_msg_bus[2] = 1'b0;
 assign have_msg_bus[3] = 1'b0;
 assign have_msg_bus[4] = !slave_empty & (state == RD_TO_PC);
 
-assign pblk_fpga = 1'b0;
+assign pblk_fpga = 1'b1;
 assign clpdm_fpga = !ena_clpdm | clpdm_reg;
-assign clpob_fpga = clpdm_fpga;
+assign clpob_fpga = !ena_clpob | clpdm_reg;
 
 assign len_bus[39:32] = (slave_used > 8'd255) ? 8'd255 : slave_used[7:0];
 assign len_bus[31:0] = 32'b0;
