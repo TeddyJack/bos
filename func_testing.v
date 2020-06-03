@@ -66,7 +66,6 @@ assign num_reps_x2 = {local_shift_reg[23:16],1'b0};
 wire [7:0] HALF = num_reps_x2[8:1];
 wire [6:0] QUARTER = num_reps_x2[8:2];
 wire [5:0] ONE_EIGHTH = num_reps_x2[8:3];
-wire [8:0] SHD_RISING = (HALF + QUARTER + ONE_EIGHTH + 1'b1) < num_reps_x2 ? (HALF + QUARTER + ONE_EIGHTH + 1'b1) : 1'b0;
 
 
 wire ctrl_ena; assign ctrl_ena = valid_bus[3];
@@ -166,9 +165,9 @@ always@(posedge dds_clk or negedge n_rst)
     else
       inner_cnt <= 0;
     
-    if(inner_cnt == (1'b0 + 1'b1))
+    if(inner_cnt == 1'b0)
       clk_fpga <= 1;
-    else if(inner_cnt == (HALF + 1'b1))
+    else if(inner_cnt == HALF)
       clk_fpga <= 0;
     
     if(state == RD_TO_DAC)
@@ -185,14 +184,14 @@ always@(posedge dds_clk or negedge n_rst)
           dac_d <= master_q[13:0];
         end
       
-      if(inner_cnt == (ONE_EIGHTH + 1'b1))
+      if(inner_cnt == ONE_EIGHTH)
         shp_fpga <= 0;
-      else if(inner_cnt == (QUARTER + ONE_EIGHTH + 1'b1))
+      else if(inner_cnt == (QUARTER + ONE_EIGHTH))
         shp_fpga <= 1;
       
-      if(inner_cnt == (HALF + ONE_EIGHTH + 1'b1))
+      if(inner_cnt == (HALF + ONE_EIGHTH))
         shd_fpga <= 0;
-      else if(inner_cnt == SHD_RISING)
+      else if(inner_cnt == (HALF + QUARTER + ONE_EIGHTH))
         shd_fpga <= 1;
 
       if(inner_cnt == 1'b0)
